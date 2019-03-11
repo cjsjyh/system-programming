@@ -13,7 +13,7 @@
 
 typedef struct linkedlist* lptr;
 typedef struct linkedlist {
-	char command[20];
+	char command[100];
 	lptr next;
 }linkedlist;
 void linkedlist_push(lptr*, char*);
@@ -43,6 +43,7 @@ int cmd_hashlistSearch(char*);
 
 int checkRange(int);
 int compareString(char*,char*,char*);
+void LowerToUpper(char*);
 
 
 //DIR Executable
@@ -75,9 +76,25 @@ int main()
 
 		//Get Input
 		fgets(fullCmd, sizeof fullCmd,stdin);
-		argCount = sscanf(fullCmd, "%s %x, %x, %x", command, &arg1, &arg2, &arg3);
-		bfrCount = sscanf(fullCmd,"%s %s %s %s %s",bfr1,bfr2,bfr3,bfr4,bfr5);
+		argCount = sscanf(fullCmd,"%s%x,%x,%x",command, &arg1, &arg2, &arg3);
+		bfrCount = sscanf(fullCmd,"%s%s%s%s%s",bfr1, bfr2, bfr3, bfr4, bfr5);
 		
+		printf("arg: %d bfr: %d\n",argCount,bfrCount);
+
+		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
+			//correct format for OPCODE [instruction] inserted
+			opcode = cmd_hashlistSearch(bfr2);
+			printf("opcode: %d\n",opcode);
+			if (opcode != -1){
+				printf("opcode is %X\n\n", opcode);
+				linkedlist_push(&history,fullCmd);
+			}
+			//invalid [instruction]
+			else {
+				printf("Invalid Mnemonic!\n\n");
+			}
+			continue;
+		}
 
 		if (argCount != bfrCount) {
 			isPushed = TRUE;
@@ -93,7 +110,7 @@ int main()
 			break;
 
 		else if (compareString(command, "hi", "history") && argCount == 1) {
-			linkedlist_push(&history, command);
+			linkedlist_push(&history, fullCmd);
 			linkedlist_print(history);
 			isPushed = TRUE;
 		}
@@ -118,18 +135,7 @@ int main()
 		else if (compareString(command, "reset", NULL) && argCount == 1)
 			cmd_reset();
 
-		else if (compareString(command, "opcode", NULL) && argCount == 2) {
-			//correct format for OPCODE [instruction] inserted
-			opcode = cmd_hashlistSearch(bfr2);
-			if (opcode != -1)
-				printf("opcode is %X\n", opcode);
-			//invalid [instruction]
-			else {
-				isPushed = TRUE;
-				printf("Invalid Command!\n");
-			}
-		}
-
+		
 		else if (compareString(command, "opcodelist", NULL) && argCount == 1)
 			hashlist_printAll(optable);
 
@@ -142,7 +148,7 @@ int main()
 		if (isPushed == TRUE)
 			isPushed = FALSE;
 		else
-			linkedlist_push(&history,command);
+			linkedlist_push(&history,fullCmd);
 
 		argCount = bfrCount = 0;
 		arg1 = arg2 = arg3 = INT_MIN;
@@ -154,7 +160,7 @@ int main()
 
 void cmd_help(){
 	printf("h[elp]\nd[ir]\nq[uit]\nhi[story]\ndu[mp] [start,end]\n");
-	printf("e[dit] address, value\n,f[ill] start, end, value\nreset\n");
+	printf("e[dit] address, value\nf[ill] start, end, value\nreset\n");
 	printf("opcode mnemonic\nopcodelist\n");
 	return;
 }
@@ -187,7 +193,7 @@ void cmd_dir(){
 }
 
 int cmd_dump(int start, int end, int* nextAdr){
-	int row, col;
+	int row, col, over = FALSE;
 	int rowStart, rowEnd, curAdr;
 
 	if (end == INT_MIN){
@@ -202,7 +208,7 @@ int cmd_dump(int start, int end, int* nextAdr){
 	}
 
 	// if start or end is out of memory range
-	if (!(checkRange(start) && checkRange(end))){
+	if (!checkRange(start)){
 		printf("Invalid Range\n");
 		return FALSE;
 	}
@@ -211,11 +217,19 @@ int cmd_dump(int start, int end, int* nextAdr){
 	rowEnd = end / 16;
 
 	for(row = rowStart; row <= rowEnd ; row++){
+		if(row * 16 > 0xFFFFF){
+			over = TRUE;
+			break;
+		}
 		printf("%05X  ", row*16);
 		
 		//Content
-		for(int col=0; col<16; col++){
+		for(col=0; col<16; col++){
 			curAdr = row * 16 + col;
+			if (curAdr > 0xFFFFF){
+				over = TRUE;
+				break;
+			}
 			//Range before start
 			if (curAdr < start)
 				printf("   ");
@@ -228,9 +242,13 @@ int cmd_dump(int start, int end, int* nextAdr){
 		printf("; ");
 
 		//Value
-		for(int col=0; col<16; col++)
+		for(col=0; col<16; col++)
 		{
 			curAdr = row * 16 + col;
+			if (curAdr > 0xFFFFF){
+				over = TRUE;
+				break;
+			}
 			//Range before start
 			if (curAdr < start)
 				printf(". ");
@@ -247,8 +265,11 @@ int cmd_dump(int start, int end, int* nextAdr){
 		}
 		printf("\n");
 	}
+	if (over)
+		*nextAdr = 0;
+	else
+		*nextAdr = end + 1;
 
-	*nextAdr = end + 1;
 	return TRUE;
 }
 
@@ -299,7 +320,10 @@ void cmd_reset(){
 }
 
 int cmd_hashlistSearch(char* mnem) {
+	//Convert lowercase to uppercase
+	LowerToUpper(mnem);
 	int index = hashfunction(mnem);
+	printf("index: %d\n",index);
 	hptr temp = optable[index];
 	while (temp != NULL) {
 		if (!strcmp(mnem, temp->mnem))
@@ -322,6 +346,12 @@ int checkRange(int adr) {
 	return TRUE;
 }
 
+void LowerToUpper(char* word){
+	for(int i=0; i<(int)strlen(word); i++)
+		if ((int)word[i]>96 && (int)word[i]<123)
+			word[i] -= 32;
+}
+
 void linkedlist_push(lptr* head,char* command){
 	lptr temp = *head;
 	lptr newNode = (lptr)malloc(sizeof(linkedlist));
@@ -335,10 +365,7 @@ void linkedlist_push(lptr* head,char* command){
 		temp->next = newNode;
 	}
 	else{
-		printf("head: %p\n", head);
-		printf("newNode %p\n", newNode);
 		*head = newNode;
-		printf("head: %p\n", head);
 	}
 
 	return;
@@ -348,10 +375,8 @@ void linkedlist_print(lptr head){
 	int count = 1;
 	lptr temp = head;
 
-	printf("print head: %p\n", head);
-
 	while(temp != NULL){
-		printf("%-4d   %s\n",count++,temp->command);
+		printf("%-4d   %s",count++,temp->command);
 		temp = temp->next;
 	}
 
@@ -372,8 +397,6 @@ void hashMain(char* fname){
 	else{
 		printf("Cannot open File\n!");
 	}
-	
-	hashlist_printAll(optable);
 }
 
 int hashfunction(char* mnem){
