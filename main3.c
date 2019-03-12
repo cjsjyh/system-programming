@@ -1,4 +1,50 @@
-#include "main.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <dirent.h>
+#include <sys/stat.h>
+#include <limits.h>
+
+#define TRUE 1
+#define FALSE 0
+#define EXECUTABLE 33279
+#define DIRECTORY 16895
+#define HASH_SIZE 20
+
+typedef struct linkedlist* lptr;
+typedef struct linkedlist {
+	char command[100];
+	lptr next;
+}linkedlist;
+void linkedlist_push(lptr*, char*);
+void linkedlist_print(lptr);
+
+typedef struct hashlist* hptr;
+typedef struct hashlist {
+	char mnem[20];
+	int opcode;
+	hptr next;
+}hashlist;
+void hashMain(char*);
+int hashfunction(char*);
+void hashlist_push();
+void hashlist_printAll();
+
+char **memory;
+hashlist **optable;
+
+void cmd_dir();
+void cmd_help();
+void cmd_reset();
+int cmd_dump(int,int,int*);
+int cmd_edit(int,int);
+int cmd_fill(int,int,int);
+int cmd_hashlistSearch(char*);
+
+int checkRange(int);
+int compareString(char*,char*,char*);
+void LowerToUpper(char*);
+
 
 //DIR Executable
 
@@ -17,9 +63,9 @@ int main()
 	for (int i=0; i<HASH_SIZE; i++)		
 		optable[i] = NULL;
 
-	memory=(char*)malloc(sizeof(char*)*MEM_SIZE);
-	//for (int i=0; i<65536; i++)
-	//	memory[i] = (char*)malloc(sizeof(char)*16);
+	memory=(char**)malloc(sizeof(char*)*65536);
+	for (int i=0; i<65536; i++)
+		memory[i] = (char*)malloc(sizeof(char)*16);
 	cmd_reset();	
 
 	hashMain("opcode.txt");
@@ -33,6 +79,8 @@ int main()
 		argCount = sscanf(fullCmd,"%s%x,%x,%x",command, &arg1, &arg2, &arg3);
 		bfrCount = sscanf(fullCmd,"%s%s%s%s%s",bfr1, bfr2, bfr3, bfr4, bfr5);
 		
+		printf("arg: %d bfr: %d\n",argCount,bfrCount);
+
 		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
 			//correct format for OPCODE [instruction] inserted
 			opcode = cmd_hashlistSearch(bfr2);
@@ -189,7 +237,7 @@ int cmd_dump(int start, int end, int* nextAdr){
 			else if (curAdr > end)
 				printf("   ");
 			else
-				printf("%02X ",memory[curAdr]);
+				printf("%02X ",memory[row][col]);
 		}
 		printf("; ");
 
@@ -208,8 +256,8 @@ int cmd_dump(int start, int end, int* nextAdr){
 			else if (curAdr > end)
 				printf(". ");
 			else{
-				if ((int)memory[curAdr] >= 0x20 && (int)memory[curAdr] <= 0x7E){
-					printf("%c ",memory[curAdr]);
+				if ((int)memory[row][col] >= 0x20 && (int)memory[row][col] <= 0x7E){
+					printf("%c ",memory[row][col]);
 				} else{
 					printf(". ");
 				}
@@ -234,7 +282,7 @@ int cmd_edit(int adr, int value){
 
 	int row = adr / 16;
 	int col = adr % 16;
-	memory[row*16 + col] = value;
+	memory[row][col] = value;
 
 	return TRUE;
 }
@@ -259,7 +307,7 @@ int cmd_fill(int start, int end, int value){
 		for(col = 0; col < 16; col++){
 			curAdr = row * 16 + col;
 			if(curAdr >= start && curAdr <= end)
-				memory[curAdr] = value;
+				memory[row][col] = value;
 		}
 	}
 
@@ -267,7 +315,8 @@ int cmd_fill(int start, int end, int value){
 }
 
 void cmd_reset(){
-	memset(memory,0,sizeof(char)*MEM_SIZE);
+	for (int i=0; i<65536; i++)
+		memset(memory[i],0,sizeof(char)*16);
 }
 
 int cmd_hashlistSearch(char* mnem) {
