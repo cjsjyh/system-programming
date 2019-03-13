@@ -5,6 +5,9 @@
 #include <sys/stat.h>
 #include <limits.h>
 
+#include "util.h"
+#include "commands.h"
+
 #define TRUE 1
 #define FALSE 0
 #define EXECUTABLE 33279
@@ -34,14 +37,5 @@ void hashlist_printAll();
 char *memory;
 hashlist **optable;
 
-void cmd_dir();
-void cmd_help();
-void cmd_reset();
-int cmd_dump(int, int, int*);
-int cmd_edit(int, int);
-int cmd_fill(int, int, int);
-int cmd_hashlistSearch(char*);
 
-int checkRange(int);
-int compareString(char*, char*, char*);
-void LowerToUpper(char*);
+

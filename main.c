@@ -36,7 +36,6 @@ int main()
 		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
 			//correct format for OPCODE [instruction] inserted
 			opcode = cmd_hashlistSearch(bfr2);
-			printf("opcode: %d\n",opcode);
 			if (opcode != -1){
 				printf("opcode is %X\n\n", opcode);
 				linkedlist_push(&history,fullCmd);
@@ -72,21 +71,38 @@ int main()
 			case 1:
 				arg1 = INT_MIN;
 				arg2 = INT_MIN;
+				break;
 			case 2:
 				arg2 = INT_MIN;
+				isPushed = !(checkComma(bfr2));
+				break;
+			case 3:
+				isPushed = !(checkComma(bfr3));
+				break;
 			}
-			isPushed = !(cmd_dump(arg1, arg2, &nextAdr));
+			if (!isPushed)
+				isPushed = !(cmd_dump(arg1, arg2, &nextAdr));
+			//Comma at the end
+			else
+				printf("Invalid command!");
 
 		}
-		else if (compareString(command, "e", "edit") && argCount == 3)
-			isPushed = !(cmd_edit(arg1, arg2));
-
-		else if (compareString(command, "f", "fill") && argCount == 4)
-			isPushed = !(cmd_fill(arg1, arg2, arg3));
-
+		else if (compareString(command, "e", "edit") && argCount == 3){
+			isPushed = !(checkComma(bfr3));
+			if (!isPushed)
+				isPushed = !(cmd_edit(arg1, arg2));
+			else
+				printf("Invalid command!");
+		}
+		else if (compareString(command, "f", "fill") && argCount == 4){
+			isPushed = !(checkComma(bfr4));
+			if (!isPushed)
+				isPushed = !(cmd_fill(arg1,arg2, arg3));
+			else
+				printf("Invalid command!");
+		}
 		else if (compareString(command, "reset", NULL) && argCount == 1)
 			cmd_reset();
-
 		
 		else if (compareString(command, "opcodelist", NULL) && argCount == 1)
 			hashlist_printAll(optable);
@@ -110,198 +126,8 @@ int main()
 
 
 
-void cmd_help(){
-	printf("h[elp]\nd[ir]\nq[uit]\nhi[story]\ndu[mp] [start,end]\n");
-	printf("e[dit] address, value\nf[ill] start, end, value\nreset\n");
-	printf("opcode mnemonic\nopcodelist\n");
-	return;
-}
 
-void cmd_dir(){
-	DIR *dir;
-	struct dirent *file;
-	struct stat info;
-	
-	if ((dir = opendir ("./")) != NULL) {
-		/* print all the files and directories within directory */
-		while ((file = readdir (dir)) != NULL) {
-			stat(file->d_name,&info);
-			
-			if(info.st_mode == EXECUTABLE)
-				printf ("%s*\n", file->d_name);
-			else if(info.st_mode == DIRECTORY)
-				printf ("%s/\n", file->d_name);
-			else
-				printf ("%s\n", file->d_name);
 
-		}
-		closedir (dir);
-	} else {
-		/* could not open directory */
-		perror ("");
-		printf("Error opening directory");
-	}
-	return;
-}
-
-int cmd_dump(int start, int end, int* nextAdr){
-	int row, col, over = FALSE;
-	int rowStart, rowEnd, curAdr;
-
-	if (end == INT_MIN){
-		if (start == INT_MIN)
-			start = *nextAdr;
-		end = start + 159;
-	}
-	
-	if (end < start){
-		printf("Invalid Range\n");
-		return FALSE;
-	}
-
-	// if start or end is out of memory range
-	if (!checkRange(start)){
-		printf("Invalid Range\n");
-		return FALSE;
-	}
-
-	rowStart = start / 16;
-	rowEnd = end / 16;
-
-	for(row = rowStart; row <= rowEnd ; row++){
-		if(row * 16 > 0xFFFFF){
-			over = TRUE;
-			break;
-		}
-		printf("%05X  ", row*16);
-		
-		//Content
-		for(col=0; col<16; col++){
-			curAdr = row * 16 + col;
-			if (curAdr > 0xFFFFF){
-				over = TRUE;
-				break;
-			}
-			//Range before start
-			if (curAdr < start)
-				printf("   ");
-			//Range after end
-			else if (curAdr > end)
-				printf("   ");
-			else
-				printf("%02X ",memory[curAdr]);
-		}
-		printf("; ");
-
-		//Value
-		for(col=0; col<16; col++)
-		{
-			curAdr = row * 16 + col;
-			if (curAdr > 0xFFFFF){
-				over = TRUE;
-				break;
-			}
-			//Range before start
-			if (curAdr < start)
-				printf(". ");
-			//Range after end
-			else if (curAdr > end)
-				printf(". ");
-			else{
-				if ((int)memory[curAdr] >= 0x20 && (int)memory[curAdr] <= 0x7E){
-					printf("%c ",memory[curAdr]);
-				} else{
-					printf(". ");
-				}
-			}
-		}
-		printf("\n");
-	}
-	if (over)
-		*nextAdr = 0;
-	else
-		*nextAdr = end + 1;
-
-	return TRUE;
-}
-
-int cmd_edit(int adr, int value){
-
-	if (!checkRange(adr)){
-		printf("Wrong Address!\n");
-		return FALSE;
-	}
-
-	int row = adr / 16;
-	int col = adr % 16;
-	memory[row*16 + col] = value;
-
-	return TRUE;
-}
-
-int cmd_fill(int start, int end, int value){
-	int rowStart, rowEnd, row, col, curAdr;
-
-	if(end < start){
-		printf("Invalid Range!\n");
-		return FALSE;
-	}
-
-	if(!(checkRange(start) || checkRange(end))){
-		printf("Invalid Range!\n");
-		return FALSE;
-	} 
-	
-	rowStart = start / 16;
-	rowEnd = end / 16;
-
-	for(row = rowStart; row <= rowEnd; row++){
-		for(col = 0; col < 16; col++){
-			curAdr = row * 16 + col;
-			if(curAdr >= start && curAdr <= end)
-				memory[curAdr] = value;
-		}
-	}
-
-	return TRUE;
-}
-
-void cmd_reset(){
-	memset(memory,0,sizeof(char)*MEM_SIZE);
-}
-
-int cmd_hashlistSearch(char* mnem) {
-	//Convert lowercase to uppercase
-	LowerToUpper(mnem);
-	int index = hashfunction(mnem);
-	printf("index: %d\n",index);
-	hptr temp = optable[index];
-	while (temp != NULL) {
-		if (!strcmp(mnem, temp->mnem))
-			return temp->opcode;
-		temp = temp->next;
-	}
-	return -1;
-}
-
-int compareString(char* command, char* shortcommand, char* longcommand){
-	if (!strcmp(command,shortcommand) || (longcommand != NULL && !strcmp(command,longcommand)))
-		return TRUE;
-	else
-		return FALSE;
-}
-
-int checkRange(int adr) {
-	if (adr < 0 || adr >= 0x100000)
-		return FALSE;
-	return TRUE;
-}
-
-void LowerToUpper(char* word){
-	for(int i=0; i<(int)strlen(word); i++)
-		if ((int)word[i]>96 && (int)word[i]<123)
-			word[i] -= 32;
-}
 
 void linkedlist_push(lptr* head,char* command){
 	lptr temp = *head;

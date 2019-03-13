@@ -10,7 +10,7 @@ int main(){
 
 	fgets(c, sizeof c,stdin);
 	printf("%d\n",sscanf(c,"%s %x",d,&intt));
-	printf("%s %d\n",d,intt);
+	printf("%s %d\n",d,(int)strlen(d));
 
 }
 

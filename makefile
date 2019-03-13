@@ -1,10 +1,12 @@
 CC = gcc
 CFLAGS = -Wall
 LDFLAGS =
-OBJFILES = stack.o main.o
-TARGET = stacktest
+OBJFILES = main.o util.o commands.o
+TARGET = 20151619.out
+
 all: $(TARGET)
-	$(TARGET): $(OBJFILES)
+
+$(TARGET): $(OBJFILES)
 	$(CC) $(CFLAGS) -o $(TARGET) $(OBJFILES) $(LDFLAGS)
 clean:
 	rm -f $(OBJFILES) $(TARGET) *~
