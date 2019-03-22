@@ -16,15 +16,14 @@ int checkRange(int adr) {
 
 int checkHex(char* str){
 	for(int i=0; i<(int)strlen(str); i++){
-		if((str[i] >=48 && str[i] <=57) || (str[i] >= 65 && str[i] <=70) || (str[i] >= 97 && str[i] <= 102)) 	
-			continue;
+		if((str[i] >=48 && str[i] <=57) || (str[i] >= 65 && str[i] <=70) || (str[i] >= 97 && str[i] <= 102) || str[i] == ',') 	
+			continue ;
 		else if(str[i] == 'X' || str[i] == 'x'){
 				if(i != 0)
 						if(str[i-1] == '0')
 								continue;
 		}
 		else{
-				printf("%c is not hex!\n",str[i]);
 				return FALSE;
 		}
 	}

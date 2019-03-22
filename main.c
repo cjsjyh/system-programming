@@ -32,7 +32,9 @@ int main()
 
 		//Get Input
 		fgets(fullCmd, sizeof fullCmd,stdin);
+		//save with the correct format
 		argCount = sscanf(fullCmd,"%s%x ,%x ,%x",command, &arg1, &arg2, &arg3);
+		//save everything as string for checking
 		bfrCount = sscanf(fullCmd,"%s%s%s%s%s%s%s",bfr[0],bfr[1],bfr[2],bfr[3],bfr[4],bfr[5],bfr[6]);
 		//For input with input value (space) , value (space) , value
 		if(!strcmp(",",bfr[2])){
@@ -46,7 +48,6 @@ int main()
 			comCount++;
 		}
 
-		printf("%d %d\n",argCount,bfrCount);
 
 		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
 			//correct format for OPCODE [instruction] inserted
@@ -61,7 +62,7 @@ int main()
 			}
 			continue;
 		}
-		
+		//cases such as dump 4, hello
 		if (argCount != bfrCount - comCount) {
 			isPushed = TRUE;
 			printf("Invalid Command!\n");
@@ -88,16 +89,21 @@ int main()
 		//Maximum number of input is 3
 		else if (compareString(command, "du", "dump") && argCount <= 3) {
 			switch (argCount) {
+			//when only dump is inserted
 			case 1:
 				arg1 = INT_MIN;
 				arg2 = INT_MIN;
 				break;
+			//when dump start is inserted
 			case 2:
 				arg2 = INT_MIN;
-				isPushed = !(checkComma(bfr[1]));
+				isPushed = checkHex(bfr[1]) && checkComma(bfr[1]);
+				isPushed = !isPushed;
 				break;
+			//when dump start, end is inserted
 			case 3:
-				isPushed = !(checkComma(bfr[2]));
+				isPushed = checkHex(bfr[1]) && checkHex(bfr[2]) && checkComma(bfr[2]);
+				isPushed = !isPushed;
 				break;
 			}
 			if (!isPushed)
@@ -115,7 +121,10 @@ int main()
 				printf("Invalid command!");
 		}
 		else if (compareString(command, "f", "fill") && argCount == 4){
-			isPushed = !(checkComma(bfr[3]));
+			//check if the command finished with a comma or if input has non-hex
+			isPushed = checkComma(bfr[3]) && checkHex(bfr[1]) && checkHex(bfr[2]) && checkHex(bfr[3]);
+			isPushed = !isPushed;
+			
 			if (!isPushed)
 				isPushed = !(cmd_fill(arg1,arg2, arg3));
 			else
