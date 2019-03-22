@@ -5,10 +5,11 @@
 int main()
 {
 	int isPushed = FALSE, opcode;
-	int argCount, bfrCount;
+	int argCount=0, bfrCount=0, comCount=0;
 	char command[30],fullCmd[200];
-	char bfr1[30],bfr2[30],bfr3[30],bfr4[30],bfr5[30];
-	int arg1,arg2,arg3,nextAdr = 0;
+	char bfr[7][30];
+	unsigned int arg1,arg2,arg3;
+	int nextAdr = 0;
 	
 	//Initialization
 	lptr history = NULL;
@@ -18,9 +19,10 @@ int main()
 		optable[i] = NULL;
 
 	memory=(char*)malloc(sizeof(char*)*MEM_SIZE);
-	//for (int i=0; i<65536; i++)
-	//	memory[i] = (char*)malloc(sizeof(char)*16);
 	cmd_reset();	
+
+	for(int i=0; i<7; i++)
+		memset(bfr[i],0,sizeof(bfr[i]));
 
 	hashMain("opcode.txt");
 
@@ -30,12 +32,25 @@ int main()
 
 		//Get Input
 		fgets(fullCmd, sizeof fullCmd,stdin);
-		argCount = sscanf(fullCmd,"%s%x,%x,%x",command, &arg1, &arg2, &arg3);
-		bfrCount = sscanf(fullCmd,"%s%s%s%s%s",bfr1, bfr2, bfr3, bfr4, bfr5);
-		
+		argCount = sscanf(fullCmd,"%s%x ,%x ,%x",command, &arg1, &arg2, &arg3);
+		bfrCount = sscanf(fullCmd,"%s%s%s%s%s%s%s",bfr[0],bfr[1],bfr[2],bfr[3],bfr[4],bfr[5],bfr[6]);
+		//For input with input value (space) , value (space) , value
+		if(!strcmp(",",bfr[2])){
+			for(int i=3; i<7; i++)
+				strcpy(bfr[i-1],bfr[i]);
+			comCount++;
+		}
+		if(!strcmp(",",bfr[3])){
+			for(int i=4; i<7; i++)
+				strcpy(bfr[i-1],bfr[i]);
+			comCount++;
+		}
+
+		printf("%d %d\n",argCount,bfrCount);
+
 		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
 			//correct format for OPCODE [instruction] inserted
-			opcode = cmd_hashlistSearch(bfr2);
+			opcode = cmd_hashlistSearch(bfr[1]);
 			if (opcode != -1){
 				printf("opcode is %X\n\n", opcode);
 				linkedlist_push(&history,fullCmd);
@@ -46,8 +61,13 @@ int main()
 			}
 			continue;
 		}
-
-		if (argCount != bfrCount) {
+		
+		if (argCount != bfrCount - comCount) {
+			isPushed = TRUE;
+			printf("Invalid Command!\n");
+		}
+		// cases such as dump 1 , 10 ,
+		else if (comCount != 0 && argCount - 2 < comCount){
 			isPushed = TRUE;
 			printf("Invalid Command!\n");
 		}
@@ -74,10 +94,10 @@ int main()
 				break;
 			case 2:
 				arg2 = INT_MIN;
-				isPushed = !(checkComma(bfr2));
+				isPushed = !(checkComma(bfr[1]));
 				break;
 			case 3:
-				isPushed = !(checkComma(bfr3));
+				isPushed = !(checkComma(bfr[2]));
 				break;
 			}
 			if (!isPushed)
@@ -88,14 +108,14 @@ int main()
 
 		}
 		else if (compareString(command, "e", "edit") && argCount == 3){
-			isPushed = !(checkComma(bfr3));
+			isPushed = !(checkComma(bfr[2]));
 			if (!isPushed)
 				isPushed = !(cmd_edit(arg1, arg2));
 			else
 				printf("Invalid command!");
 		}
 		else if (compareString(command, "f", "fill") && argCount == 4){
-			isPushed = !(checkComma(bfr4));
+			isPushed = !(checkComma(bfr[3]));
 			if (!isPushed)
 				isPushed = !(cmd_fill(arg1,arg2, arg3));
 			else
@@ -118,7 +138,10 @@ int main()
 		else
 			linkedlist_push(&history,fullCmd);
 
-		argCount = bfrCount = 0;
+		//RESET
+		for(int i=0; i<7; i++)
+				memset(bfr[i],0,sizeof(bfr[i]));
+		argCount = bfrCount = comCount = 0;
 		arg1 = arg2 = arg3 = INT_MIN;
 		printf("\n");
 	}

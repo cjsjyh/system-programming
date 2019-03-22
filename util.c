@@ -14,6 +14,23 @@ int checkRange(int adr) {
 	return TRUE;
 }
 
+int checkHex(char* str){
+	for(int i=0; i<(int)strlen(str); i++){
+		if((str[i] >=48 && str[i] <=57) || (str[i] >= 65 && str[i] <=70) || (str[i] >= 97 && str[i] <= 102)) 	
+			continue;
+		else if(str[i] == 'X' || str[i] == 'x'){
+				if(i != 0)
+						if(str[i-1] == '0')
+								continue;
+		}
+		else{
+				printf("%c is not hex!\n",str[i]);
+				return FALSE;
+		}
+	}
+	return TRUE;
+}
+
 void LowerToUpper(char* word) {
 	for (int i = 0; i < (int)strlen(word); i++)
 		if ((int)word[i] > 96 && (int)word[i] < 123)

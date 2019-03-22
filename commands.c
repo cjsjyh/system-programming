@@ -17,14 +17,12 @@ void cmd_dir() {
 		/* print all the files and directories within directory */
 		while ((file = readdir(dir)) != NULL) {
 			stat(file->d_name, &info);
-
-			if (info.st_mode == EXECUTABLE)
-				printf("%s*\n", file->d_name);
-			else if (info.st_mode == DIRECTORY)
-				printf("%s/\n", file->d_name);
+			if(S_ISDIR(info.st_mode))
+					printf("%s/\n",file->d_name);
+			else if(info.st_mode & S_IXUSR)
+					printf("%s*\n", file->d_name);
 			else
-				printf("%s\n", file->d_name);
-
+					printf("%s\n",file->d_name);
 		}
 		closedir(dir);
 	}
