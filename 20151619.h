@@ -27,12 +27,13 @@ typedef struct hashlist* hptr;
 typedef struct hashlist {
 	char mnem[20];
 	int opcode;
+	char format[20];
 	hptr next;
 }hashlist;
 void hashMain(char*);
 int hashfunction(char*);
-void hashlist_push();
-void hashlist_printAll();
+void hashlist_push(hptr*, char*, int, char*);
+void hashlist_printAll(hptr*);
 
 char *memory;
 hashlist **optable;

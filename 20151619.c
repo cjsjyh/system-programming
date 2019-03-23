@@ -1,4 +1,4 @@
-#include "main.h"
+#include "20151619.h"
 
 //DIR Executable
 
@@ -114,7 +114,8 @@ int main()
 
 		}
 		else if (compareString(command, "e", "edit") && argCount == 3){
-			isPushed = !(checkComma(bfr[2]));
+			isPushed = checkComma(bfr[2]) && checkHex(bfr[1]) && checkHex(bfr[2]);
+			isPushed = !isPushed;
 			if (!isPushed)
 				isPushed = !(cmd_edit(arg1, arg2));
 			else
@@ -156,11 +157,7 @@ int main()
 	}
 }
 
-
-
-
-
-
+//appends new node with command to the end of head linked list
 void linkedlist_push(lptr* head,char* command){
 	lptr temp = *head;
 	lptr newNode = (lptr)malloc(sizeof(linkedlist));
@@ -169,6 +166,7 @@ void linkedlist_push(lptr* head,char* command){
 	strcpy(newNode->command,command);
 
 	if(temp != NULL){
+		//goes to the last node
 		while(temp->next != NULL)
 			temp = temp->next;	
 		temp->next = newNode;
@@ -180,6 +178,7 @@ void linkedlist_push(lptr* head,char* command){
 	return;
 }
 
+//prints all the nodes in the linked list my moving one node at a time
 void linkedlist_print(lptr head){
 	int count = 1;
 	lptr temp = head;
@@ -192,6 +191,7 @@ void linkedlist_print(lptr head){
 	return;
 }
 
+//main function to create initial hashtable
 void hashMain(char* fname){
 	FILE *fp = fopen(fname, "r");
 	int opcode,index;
@@ -199,8 +199,10 @@ void hashMain(char* fname){
 
 	if (fp != NULL){
 		while(fscanf(fp,"%X %s %s",&opcode,mnem,format) != EOF){
+			//finds the index for mnemonic to go in the hashtable
 			index = hashfunction(mnem);
-			hashlist_push(&(optable[index]),mnem,opcode);
+			//appends that mnemonic to the table
+			hashlist_push(&(optable[index]),mnem,opcode,format);
 		}
 	}
 	else{
@@ -208,6 +210,7 @@ void hashMain(char* fname){
 	}
 }
 
+//returns index number for the mnemonic to go into in the hashtable
 int hashfunction(char* mnem){
 	int i,sum=0;
 	for(i=0; i<(int)strlen(mnem); i++)
@@ -215,18 +218,23 @@ int hashfunction(char* mnem){
 	return sum % HASH_SIZE;
 }
 
-void hashlist_push(hptr *head,char* mnem,int opcode){
+//creates a new node with mnemonic, opcode and format. Then inserts the new node the end of head list
+void hashlist_push(hptr *head,char* mnem,int opcode, char* format){
 	hptr temp = *head;
 
+	//make new node
 	hptr newNode = (hptr)malloc(sizeof(hashlist));
 	newNode->next = NULL;
 	strcpy(newNode->mnem,mnem);
+	strcpy(newNode->format,format);
 	newNode->opcode = opcode;
 
 
 	if(*head != NULL){
+		//go to the end of head
 		while(temp->next != NULL)
 			temp = temp->next;	
+		//insert to new node
 		temp->next = newNode;
 	}else{
 		*head = newNode;
@@ -235,6 +243,7 @@ void hashlist_push(hptr *head,char* mnem,int opcode){
 	return;
 }
 
+//prints whole hashtable
 void hashlist_printAll(hptr *head){
 	int i, isFirst;
 	hptr temp;
@@ -242,8 +251,10 @@ void hashlist_printAll(hptr *head){
 	for(i=0; i<HASH_SIZE; i++){
 		temp = head[i];
 		isFirst = TRUE;
+		//if an index is not empty
 		if(temp != NULL){
 			printf("%d : ",i);
+			//iterate through the list
 			while(temp != NULL){
 				if(!isFirst)
 					printf(" -> ");
