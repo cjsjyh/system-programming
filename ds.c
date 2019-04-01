@@ -115,7 +115,7 @@ void hashlist_printAll(hptr *head){
 	}
 }
 
-void symbtab_push(symtab **head,char* label,int addr){
+void symtab_push(symtab **head,char* label,int addr){
 	symtab *temp = *head;
 
 	//make new node
@@ -135,6 +135,17 @@ void symbtab_push(symtab **head,char* label,int addr){
 	}
 
 	return;
+}
+
+void symtab_print(symtab *head){
+    while(head != NULL){
+        printf("\t%s %X\n",head->label,head->addr);
+        head = head->next;
+    }
+}
+
+int symfunction(char* str){
+	return (int)str[0] - (int)'A';
 }
 
 void interm_push(intermptr *head,intermptr newNode){

@@ -1,6 +1,8 @@
 #include "util.h"
 #include "20151619.h"
 
+#include "math.h"
+
 //compares command with shortcommand and longcommand and see if command matches with one of them
 int compareString(char* command, char* shortcommand, char* longcommand) {
 	if (!strcmp(command, shortcommand) || (longcommand != NULL && !strcmp(command, longcommand)))
@@ -33,19 +35,23 @@ int checkHex(char* str){
 	return TRUE;
 }
 
+//if argCount < 0 , you need to check operand2
 int asmSeparater(char* str, char* label, char* operation, char* operand, char* operand2){
 	int argCount = sscanf(str,"%s %s %s %s",label,operation,operand,operand2);
 	//cases with , such as LDCH BUFFER, X
 	if(!checkComma(operation)){
 		argCount *= -1;
+		//if not all 4 inputs come in, move back
 		if(argCount != -4){	
 			operation[(int)strlen(operation)-1] = '\0';
 			strcpy(operand2,operand);
 			strcpy(operand,operation);
 			strcpy(operation,label);
+			memset(label,0,sizeof label);
 		}
 	}
 	else if(!checkComma(operand)){
+		argCount *= -1;
 		operand[(int)strlen(operand)-1] = '\0';
 	}
 
@@ -53,10 +59,12 @@ int asmSeparater(char* str, char* label, char* operation, char* operand, char* o
 	switch(argCount){
 		case 1:
 				strcpy(operation,label);
+				memset(label,0,sizeof label);
 				break;
 		case 2:
 				strcpy(operand,operation);
 				strcpy(operation,label);
+				memset(label,0,sizeof label);
 				break;
 	}
 
@@ -135,4 +143,8 @@ int HexBitCount(int num){
 		digit++;
 	}
 	return digit;
+}
+
+int HexByteCount(int num){
+	return (int)(ceil((float)num/2));
 }

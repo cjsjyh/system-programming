@@ -1,6 +1,7 @@
 #include "commands.h"
 #include "util.h"
 #include "20151619.h"
+#include "ds.h"
 
 //Prints Help
 void cmd_help() {
@@ -29,7 +30,8 @@ void cmd_assemble(char* filename){
 	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
 	char* tempContent;
 	int argCount, num, numCount;
-	int opcode,format=-1, locctr=0;
+	int isFirst = TRUE, errorFlag = FALSE;
+	int opcode,format=-1, locctr=0,i=0;
 	
 	intermptr intermediate;
 	intermptr newinterm;
@@ -40,17 +42,40 @@ void cmd_assemble(char* filename){
 		return;
 	}
 
+	free(symboltable);
+	symboltable = (symptr*)malloc(sizeof(symptr)*SYM_SIZE);
 
 	//Get 1 line at a time from file until NULL
 	while(fgets(line,200,fp) != NULL){
-		if(line == NULL || !strcmp(line,"\n"))
+		//empty line
+		if(!strcmp(line,"") || !strcmp(line,"\n"))
 			continue;
-
-		argCount = asmSeparater(line,label,operation,operand,operand2);
 		//ignore comment line
-		if(label[0] == '.')
+		i=0;
+		while(line[i] == ' ' || line[i] =='\t')
+			i++;
+		if(line[i] == '.')
 			continue;
 		
+		argCount = asmSeparater(line,label,operation,operand,operand2);
+
+		if(isFirst){
+			if(!strcmp(operation,"START"))
+				locctr = StrToHex(operand); 
+			else
+				locctr = 0;
+			isFirst = FALSE;
+		}
+
+		if(argCount < 0)
+			printf("[OP2:%s] %s",operand2,line);
+		if(strcmp(label,"")){
+			int index = symfunction(label);
+			printf("[label:%s] %s",label,line);
+			symtab_push(&(symboltable[index]), label, locctr);
+		}
+			
+
 		//make new node for a line of intermediate file
 		newinterm = (intermptr)malloc(sizeof(interm));
 		newinterm->addr = locctr;
@@ -71,7 +96,7 @@ void cmd_assemble(char* filename){
 			opcode = hashSearch_opcode(operation);
 			strcpy(newinterm->operation,operation);
 		}
-		printf("(%s is format %s)\n",operation,tempFormat);
+		printf("(%s is format %s)\n\n",operation,tempFormat);
 		//Set format for 1,2,3
 		if(tempFormat != NULL && format != 4){
 			if(!strcmp(tempFormat,"3/4"))
@@ -85,6 +110,8 @@ void cmd_assemble(char* filename){
 		strcpy(newinterm->operand,operand);
 		strcpy(newinterm->operand2,operand2);
 		interm_push(&intermediate,newinterm);
+
+		
 
 		//increase LOCCTR
 		if(format != -1){
@@ -124,10 +151,6 @@ void cmd_assemble(char* filename){
 				//printf("[%X]WORD operand %d\n",locctr,num);
 				locctr += 3;
 			}
-			else if(!strcmp(operation,"START")){
-				locctr = StrToHex(operand); 
-				//printf("--START has set locctr to %x--\n",locctr);
-			}
 			else if(!strcmp(operation,"END")){
 				//printf("[%X]END operand %d\n",locctr,num);
 			}
@@ -141,21 +164,7 @@ void cmd_assemble(char* filename){
 			}
 
 		}//else
-		
-		
-		/*
-		switch(argCount){
-			case 1:
-					printf("\t%s\n",operation);
-					break;
-			case 2:
-					printf("\t%s\t%s\n",operation,operand);
-					break;
-			case 3:
-					printf("%s\t%s\t%s\n",label,operation,operand);
-					break;
-		}
-		*/
+
 
 		//reset
 		format = -1;
@@ -165,6 +174,8 @@ void cmd_assemble(char* filename){
 		memset(operand2, 0, sizeof operand2);
 	}//while
 
+	for(int i=0;i<HASH_SIZE;i++)
+		symtab_print(symboltable[i]);
 	fclose(fp);
 
 	//PASS 2

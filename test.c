@@ -4,12 +4,10 @@
 
 int main() {
 
-	char *a = "c'test'";
-	char b[30];
+	char *a = "acc";
+	char *b = "abcc";
 
-	strncpy(b,&(a[2]),strlen(a)-3);
-	b[4] = 0;
-	printf("%s\n",b);
+	printf("%d\n",strcmp(a,b));
 
 	return 0;
 }

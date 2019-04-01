@@ -1,6 +1,8 @@
 #ifndef _DS_C_
 #define _DS_C_
 
+#define HASH_SIZE 20
+#define SYM_SIZE 26
 
 typedef struct interm* intermptr;
 typedef struct interm {
@@ -46,6 +48,10 @@ typedef struct symtab {
 	int addr;
 	symptr next;
 }symtab;
+int symfunction(char*);
+
+void symtab_push(symtab**,char*,int);
+void symtab_print(symptr);
 
 void interm_push(intermptr*, intermptr);
 

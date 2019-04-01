@@ -11,7 +11,6 @@
 
 #define TRUE 1
 #define FALSE 0
-#define HASH_SIZE 20
 #define MEM_SIZE 65536 * 16
 #define WORD 3
 #define BYTE 1

@@ -1,6 +1,6 @@
 CC = gcc
 CFLAGS =
-LDFLAGS =
+LDFLAGS = -lm
 OBJFILES = 20151619.o util.o commands.o ds.o
 TARGET = a.out
 
