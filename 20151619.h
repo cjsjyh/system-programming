@@ -1,3 +1,5 @@
+#ifndef _20151619_H_
+#define _20151619_H_
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -5,15 +7,14 @@
 #include <sys/stat.h>
 #include <limits.h>
 
-#include "util.h"
 #include "commands.h"
 
 #define TRUE 1
 #define FALSE 0
-#define EXECUTABLE 33279
-#define DIRECTORY 16895
 #define HASH_SIZE 20
 #define MEM_SIZE 65536 * 16
+#define WORD 3
+#define BYTE 1
 
 typedef struct linkedlist* lptr;
 typedef struct linkedlist {
@@ -22,6 +23,13 @@ typedef struct linkedlist {
 }linkedlist;
 void linkedlist_push(lptr*, char*);
 void linkedlist_print(lptr);
+
+typedef struct symtable* sptr;
+typedef struct symtable {
+	char label[30];
+	unsigned int addr;
+	sptr next;
+}symtable;
 
 typedef struct hashlist* hptr;
 typedef struct hashlist {
@@ -35,8 +43,18 @@ int hashfunction(char*);
 void hashlist_push(hptr*, char*, int, char*);
 void hashlist_printAll(hptr*);
 
-char *memory;
+typedef struct symtab* symptr;
+typedef struct symtab {
+	char label[30];
+	int addr;
+	symptr next;
+}symtab;
+
+void interm_push(intermptr);
+
+unsigned char *memory;
 hashlist **optable;
+intermptr intermediate;
 
-
+#endif
 

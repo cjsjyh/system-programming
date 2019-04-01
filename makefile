@@ -2,7 +2,7 @@ CC = gcc
 CFLAGS =
 LDFLAGS =
 OBJFILES = 20151619.o util.o commands.o
-TARGET = 20151619.out
+TARGET = a.out
 
 all: $(TARGET)
 

@@ -1,5 +1,9 @@
 #include "20151619.h"
 
+#include "commands.h"
+
+#include "util.h"
+
 //DIR Executable
 
 int main()
@@ -9,8 +13,8 @@ int main()
 	char command[30],fullCmd[200];
 	char bfr[7][30];
 	unsigned int arg1,arg2,arg3;
-	int nextAdr = 0;
-	
+	int nextAdr = 0,cmaFlag=1;
+
 	//Initialization
 	lptr history = NULL;
 
@@ -51,7 +55,7 @@ int main()
 
 		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
 			//correct format for OPCODE [instruction] inserted
-			opcode = cmd_hashlistSearch(bfr[1]);
+			opcode = hashSearch_opcode(bfr[1]);
 			if (opcode != -1){
 				printf("opcode is %X\n\n", opcode);
 				linkedlist_push(&history,fullCmd);
@@ -62,21 +66,41 @@ int main()
 			}
 			continue;
 		}
-		//cases such as dump 4, hello
+		printf("argCount: %d bfrCount: %d comCount:  %d\n",argCount,bfrCount,comCount);	
 		if (argCount != bfrCount - comCount) {
+			//cases such as dump 4, hello
+			cmaFlag = FALSE;
 			isPushed = TRUE;
-			printf("Invalid Command!\n");
+			printf("Invalid Command11!\n");
 		}
 		// cases such as dump 1 , 10 ,
 		else if (comCount != 0 && argCount - 2 < comCount){
+			cmaFlag = FALSE;
 			isPushed = TRUE;
 			printf("Invalid Command!\n");
 		}
-		else if (compareString(command, "h", "help") && argCount == 1)
-			cmd_help();
 
-		else if (compareString(command, "d", "dir") && argCount == 1)
+
+
+		if (compareString(command, "h", "help") && argCount == 1){
+			cmd_help();
+			isPushed = FALSE;
+		}
+
+		else if(compareString(command,"type",NULL) && argCount == 2){
+			cmd_type(bfr[1]);
+			isPushed = FALSE;
+		}
+
+		else if(compareString(command,"assemble",NULL) && argCount == 2){
+			cmd_assemble(bfr[1]);
+			isPushed = FALSE;
+		}
+
+		else if (compareString(command, "d", "dir") && argCount == 1){
 			cmd_dir();
+			isPushed = FALSE;
+		}
 
 		else if (compareString(command, "q", "quit") && argCount == 1)
 			break;
@@ -87,7 +111,7 @@ int main()
 			isPushed = TRUE;
 		}
 		//Maximum number of input is 3
-		else if (compareString(command, "du", "dump") && argCount <= 3) {
+		else if (compareString(command, "du", "dump") && argCount <= 3 && cmaFlag) {
 			switch (argCount) {
 			//when only dump is inserted
 			case 1:
@@ -113,7 +137,7 @@ int main()
 				printf("Invalid command!");
 
 		}
-		else if (compareString(command, "e", "edit") && argCount == 3){
+		else if (compareString(command, "e", "edit") && argCount == 3 && cmaFlag){
 			isPushed = checkComma(bfr[2]) && checkHex(bfr[1]) && checkHex(bfr[2]);
 			isPushed = !isPushed;
 			if (!isPushed)
@@ -121,7 +145,7 @@ int main()
 			else
 				printf("Invalid command!");
 		}
-		else if (compareString(command, "f", "fill") && argCount == 4){
+		else if (compareString(command, "f", "fill") && argCount == 4 && cmaFlag){
 			//check if the command finished with a comma or if input has non-hex
 			isPushed = checkComma(bfr[3]) && checkHex(bfr[1]) && checkHex(bfr[2]) && checkHex(bfr[3]);
 			isPushed = !isPushed;
@@ -131,15 +155,19 @@ int main()
 			else
 				printf("Invalid command!");
 		}
-		else if (compareString(command, "reset", NULL) && argCount == 1)
+		else if (compareString(command, "reset", NULL) && argCount == 1){
 			cmd_reset();
-		
-		else if (compareString(command, "opcodelist", NULL) && argCount == 1)
+			isPushed = FALSE;
+		}
+
+		else if (compareString(command, "opcodelist", NULL) && argCount == 1){
 			hashlist_printAll(optable);
+			isPushed = FALSE;
+		}
 
 		else {
 			isPushed = TRUE;
-			printf("Invalid Command!\n");
+			printf("Invalid Command!22\n");
 		}
 		
 
@@ -153,6 +181,7 @@ int main()
 				memset(bfr[i],0,sizeof(bfr[i]));
 		argCount = bfrCount = comCount = 0;
 		arg1 = arg2 = arg3 = INT_MIN;
+		cmaFlag = TRUE;
 		printf("\n");
 	}
 }
@@ -211,10 +240,10 @@ void hashMain(char* fname){
 }
 
 //returns index number for the mnemonic to go into in the hashtable
-int hashfunction(char* mnem){
+int hashfunction(char* str){
 	int i,sum=0;
-	for(i=0; i<(int)strlen(mnem); i++)
-		sum += (int)mnem[i];
+	for(i=0; i<(int)strlen(str); i++)
+		sum += (int)str[i];
 	return sum % HASH_SIZE;
 }
 
@@ -266,4 +295,42 @@ void hashlist_printAll(hptr *head){
 		}
 
 	}
+}
+
+void symbtab_push(symtab **head,char* label,int addr){
+	symtab *temp = *head;
+
+	//make new node
+	symtab* newNode = (symtab*)malloc(sizeof(symtab));
+	strcpy(newNode->label,label);
+	newNode->addr = addr;
+	newNode->next = NULL;
+
+	if(*head != NULL){
+		//go to the end of head
+		while(temp->next != NULL)
+			temp = temp->next;	
+		//insert to new node
+		temp->next = newNode;
+	}else{
+		*head = newNode;
+	}
+
+	return;
+}
+
+void interm_push(intermptr newNode){
+	intermptr temp = intermediate;
+
+	if(intermediate != NULL){
+		//go to the end of head
+		while(temp->next != NULL)
+			temp = temp->next;	
+		//insert to new node
+		temp->next = newNode;
+	}else{
+		intermediate = newNode;
+	}
+
+	return;
 }

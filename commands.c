@@ -1,12 +1,174 @@
 #include "commands.h"
+#include "util.h"
 #include "20151619.h"
 
 //Prints Help
 void cmd_help() {
 	printf("h[elp]\nd[ir]\nq[uit]\nhi[story]\ndu[mp] [start,end]\n");
 	printf("e[dit] address, value\nf[ill] start, end, value\nreset\n");
-	printf("opcode mnemonic\nopcodelist\n");
+	printf("opcode mnemonic\nopcodelist\nassemble filename\ntype filename\nsymbol\n");
 	return;
+}
+
+void cmd_type(char* filename){
+	FILE *fp = fopen(filename,"r");
+	char line[100]={0,};
+	if (fp == NULL){
+		printf("File doesn't exist!\n");
+		return;
+	}
+	while(fgets(line,100,fp) != NULL)
+			printf("%s",line);
+	fclose(fp);
+	return;
+}
+
+void cmd_assemble(char* filename){
+	FILE *fp = fopen(filename, "r");
+	char line[200]={0,};
+	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
+	char* tempContent;
+	int argCount, num, numCount;
+	int opcode,format=-1, locctr=0;
+	intermptr newinterm;
+
+	//PASS 1
+	if (fp == NULL){
+		printf("File doesn't exist!\n");
+		return;
+	}
+
+	free(intermediate);
+
+
+	//Get 1 line at a time from file until NULL
+	while(fgets(line,200,fp) != NULL){
+		if(line == NULL || !strcmp(line,"\n"))
+			continue;
+
+		argCount = asmSeparater(line,label,operation,operand,operand2);
+		//ignore comment line
+		if(label[0] == '.')
+			continue;
+		
+		//make new node for a line of intermediate file
+		newinterm = (intermptr)malloc(sizeof(interm));
+		newinterm->addr = locctr;
+		newinterm->next = NULL;
+		newinterm->argCount = argCount;
+
+		printf("[%X] %s",locctr,line);
+
+		//Handle format 4 exception
+		if(operation[0] == '+'){
+			format = 4;
+			tempFormat = hashSearch_format(&(operation[1]));
+			opcode = hashSearch_opcode(&(operation[1]));
+			strcpy(newinterm->operation,&(operation[1]));
+		}
+		else{
+			tempFormat = hashSearch_format(operation);
+			opcode = hashSearch_opcode(operation);
+			strcpy(newinterm->operation,operation);
+		}
+		printf("(%s is format %s)\n",operation,tempFormat);
+		//Set format for 1,2,3
+		if(tempFormat != NULL && format != 4){
+			if(!strcmp(tempFormat,"3/4"))
+				format = 3;
+			else
+				format = (int)tempFormat[0] - (int)'0';
+		}
+
+		//make new node for a line of intermediate file
+		newinterm->format = format;
+		strcpy(newinterm->operand,operand);
+		strcpy(newinterm->operand2,operand2);
+		interm_push(newinterm);
+
+		//increase LOCCTR
+		if(format != -1){
+			//printf("[%X]%s is format %d\n",locctr,operation,format);
+			locctr += format;
+		}//if
+		//directives without opcode such as RESB, RESW
+		else{
+			if(!strcmp(operation,"RESW")){
+				num = StrToInt(operand);
+				//printf("[%X]RESW operand %d\n",locctr,num);
+				locctr += num * 3;
+			}
+			else if(!strcmp(operation,"RESB")){
+				num = StrToInt(operand);
+				//printf("[%X]RESB operand %d\n",locctr,num);
+				locctr += num;
+			}
+			else if(!strcmp(operation, "BYTE")){
+				//Character input
+				tempContent = extractContent(operand);
+				if(operand[0] == 'X'){
+					num = (int)strlen(tempContent);
+					locctr += num;
+					//printf("[%X]BYTE operand %X\n",locctr,num);
+					//get size of hex
+				}
+				else if(operand[0] == 'C'){
+					//printf("[%X]BYTE operand %s\n",locctr,tempContent);
+					locctr += strlen(tempContent);
+				}
+				else
+					printf("What is this input? %s\n",operand);
+			}
+			else if(!strcmp(operation, "WORD")){
+				num = StrToInt(operand);	
+				//printf("[%X]WORD operand %d\n",locctr,num);
+				locctr += 3;
+			}
+			else if(!strcmp(operation,"START")){
+				locctr = StrToHex(operand); 
+				//printf("--START has set locctr to %x--\n",locctr);
+			}
+			else if(!strcmp(operation,"END")){
+				//printf("[%X]END operand %d\n",locctr,num);
+			}
+			else if(!strcmp(operation,"BASE")){
+				
+			}
+			//unknown directive
+			else{
+				//printf("!!ELSE!! %s\n",operation);
+				continue;
+			}
+
+		}//else
+		
+		
+		/*
+		switch(argCount){
+			case 1:
+					printf("\t%s\n",operation);
+					break;
+			case 2:
+					printf("\t%s\t%s\n",operation,operand);
+					break;
+			case 3:
+					printf("%s\t%s\t%s\n",label,operation,operand);
+					break;
+		}
+		*/
+
+		//reset
+		format = -1;
+		memset(operation, 0, sizeof operation);
+		memset(label, 0, sizeof label);
+		memset(operand, 0, sizeof operand);
+		memset(operand2, 0, sizeof operand2);
+	}//while
+
+	fclose(fp);
+
+	//PASS 2
+
 }
 
 //Prints files in current directory
@@ -176,7 +338,7 @@ void cmd_reset() {
 	memset(memory, 0, sizeof(char)*MEM_SIZE);
 }
 
-int cmd_hashlistSearch(char* mnem) {
+int hashSearch_opcode(char* mnem) {
 	//Convert lowercase to uppercase
 	LowerToUpper(mnem);
 	int index = hashfunction(mnem);
@@ -190,4 +352,20 @@ int cmd_hashlistSearch(char* mnem) {
 		temp = temp->next;
 	}
 	return -1;
+}
+
+char* hashSearch_format(char* mnem) {
+	//Convert lowercase to uppercase
+	LowerToUpper(mnem);
+	int index = hashfunction(mnem);
+	hptr temp = optable[index];
+	//search untill the end of one optable's index
+	while (temp != NULL) {
+		//if the mnemonic that i'm looking for is found
+		if (!strcmp(mnem, temp->mnem))
+			return temp->format;
+		//otherwise continue to the next node
+		temp = temp->next;
+	}
+	return NULL;
 }
