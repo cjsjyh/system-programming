@@ -1,7 +1,7 @@
 CC = gcc
 CFLAGS =
 LDFLAGS =
-OBJFILES = 20151619.o util.o commands.o
+OBJFILES = 20151619.o util.o commands.o ds.o
 TARGET = a.out
 
 all: $(TARGET)

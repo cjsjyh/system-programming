@@ -30,6 +30,8 @@ void cmd_assemble(char* filename){
 	char* tempContent;
 	int argCount, num, numCount;
 	int opcode,format=-1, locctr=0;
+	
+	intermptr intermediate;
 	intermptr newinterm;
 
 	//PASS 1
@@ -37,8 +39,6 @@ void cmd_assemble(char* filename){
 		printf("File doesn't exist!\n");
 		return;
 	}
-
-	free(intermediate);
 
 
 	//Get 1 line at a time from file until NULL
@@ -84,7 +84,7 @@ void cmd_assemble(char* filename){
 		newinterm->format = format;
 		strcpy(newinterm->operand,operand);
 		strcpy(newinterm->operand2,operand2);
-		interm_push(newinterm);
+		interm_push(&intermediate,newinterm);
 
 		//increase LOCCTR
 		if(format != -1){

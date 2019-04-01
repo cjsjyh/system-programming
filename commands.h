@@ -16,15 +16,6 @@ int cmd_fill(int, int, int);
 int hashSearch_opcode(char*);
 char* hashSearch_format(char*);
 
-typedef struct interm* intermptr;
-typedef struct interm {
-    int addr;
-	int format;
-	int argCount;
-    char operation[30];
-    char operand[20];
-    char operand2[20];
-    intermptr next;
-}interm;
+
 
 #endif
