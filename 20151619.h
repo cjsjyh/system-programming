@@ -20,7 +20,7 @@
 unsigned char *memory;
 hashlist **optable;
 symptr *symboltable;
-
+int newsymtable;
 
 #endif
 

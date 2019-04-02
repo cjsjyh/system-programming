@@ -17,6 +17,7 @@ int main()
 
 	//Initialization
 	lptr history = NULL;
+	newsymtable = TRUE;
 
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
 	for (int i=0; i<HASH_SIZE; i++)		
@@ -66,18 +67,16 @@ int main()
 			}
 			continue;
 		}
-		printf("argCount: %d bfrCount: %d comCount:  %d\n",argCount,bfrCount,comCount);	
+		
 		if (argCount != bfrCount - comCount) {
 			//cases such as dump 4, hello
 			cmaFlag = FALSE;
 			isPushed = TRUE;
-			printf("Invalid Command11!\n");
 		}
 		// cases such as dump 1 , 10 ,
 		else if (comCount != 0 && argCount - 2 < comCount){
 			cmaFlag = FALSE;
 			isPushed = TRUE;
-			printf("Invalid Command!\n");
 		}
 
 
@@ -90,6 +89,13 @@ int main()
 		else if(compareString(command,"type",NULL) && argCount == 2){
 			cmd_type(bfr[1]);
 			isPushed = FALSE;
+		}
+
+		else if(compareString(command,"symbol",NULL) && argCount == 1){
+			if(!newsymtable)
+				symtab_printAll();
+			else 
+				printf("Not assembled yet!\n");
 		}
 
 		else if(compareString(command,"assemble",NULL) && argCount == 2){
@@ -167,7 +173,7 @@ int main()
 
 		else {
 			isPushed = TRUE;
-			printf("Invalid Command!22\n");
+			printf("Invalid Command!\n");
 		}
 		
 

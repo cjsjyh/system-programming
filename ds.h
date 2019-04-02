@@ -52,6 +52,7 @@ int symfunction(char*);
 
 void symtab_push(symtab**,char*,int);
 void symtab_print(symptr);
+void symtab_printAll();
 
 void interm_push(intermptr*, intermptr);
 

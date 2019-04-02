@@ -33,7 +33,7 @@ void cmd_assemble(char* filename){
 	int isFirst = TRUE, errorFlag = FALSE;
 	int opcode,format=-1, locctr=0,i=0;
 	
-	intermptr intermediate;
+	intermptr intermediate=NULL;
 	intermptr newinterm;
 
 	//PASS 1
@@ -42,8 +42,15 @@ void cmd_assemble(char* filename){
 		return;
 	}
 
-	free(symboltable);
-	symboltable = (symptr*)malloc(sizeof(symptr)*SYM_SIZE);
+	//if symbol table is alreay set, clear
+	if(!newsymtable){
+		for(int i = SYM_SIZE; i>=0; i--)
+			free(symboltable[i]);
+		free(symboltable);
+		symboltable = NULL;
+	}
+
+	symboltable = (symptr*)calloc(SYM_SIZE,sizeof(symptr)*SYM_SIZE);
 
 	//Get 1 line at a time from file until NULL
 	while(fgets(line,200,fp) != NULL){
@@ -96,7 +103,7 @@ void cmd_assemble(char* filename){
 			opcode = hashSearch_opcode(operation);
 			strcpy(newinterm->operation,operation);
 		}
-		printf("(%s is format %s)\n\n",operation,tempFormat);
+
 		//Set format for 1,2,3
 		if(tempFormat != NULL && format != 4){
 			if(!strcmp(tempFormat,"3/4"))
@@ -165,6 +172,15 @@ void cmd_assemble(char* filename){
 
 		}//else
 
+		if (intermediate == NULL)
+			intermediate = newinterm;
+		else{
+			intermptr temp;
+			temp = intermediate;
+			while(temp->next != NULL)
+				temp = temp->next;
+			temp->next = newinterm;
+		}
 
 		//reset
 		format = -1;
@@ -172,14 +188,26 @@ void cmd_assemble(char* filename){
 		memset(label, 0, sizeof label);
 		memset(operand, 0, sizeof operand);
 		memset(operand2, 0, sizeof operand2);
-	}//while
 
-	for(int i=0;i<HASH_SIZE;i++)
-		symtab_print(symboltable[i]);
+	}//while
 	fclose(fp);
 
 	//PASS 2
+	if (intermediate == NULL){
+		printf("No lines to assemble\n");
+	}
+	else{
+		intermptr curline;
+		curline = intermediate;
+		while(curline->next != NULL){
+		
+		
+		
+			curline = curline->next;
+		}
+	}
 
+	newsymtable = FALSE;
 }
 
 //Prints files in current directory

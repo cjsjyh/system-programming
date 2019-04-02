@@ -116,7 +116,8 @@ void hashlist_printAll(hptr *head){
 }
 
 void symtab_push(symtab **head,char* label,int addr){
-	symtab *temp = *head;
+	symtab *temp;
+	symtab *prev;
 
 	//make new node
 	symtab* newNode = (symtab*)malloc(sizeof(symtab));
@@ -124,17 +125,40 @@ void symtab_push(symtab **head,char* label,int addr){
 	newNode->addr = addr;
 	newNode->next = NULL;
 
+
 	if(*head != NULL){
-		//go to the end of head
-		while(temp->next != NULL)
-			temp = temp->next;	
+		//head에 삽입하는 경우
+		if (strcmp((*head)->label, label) < 0){
+			newNode->next = *head;
+			*head = newNode;
+			return;
+		}
+		else{
+			temp = (*head)->next;
+			prev = *head;
+		}
+		//Search for the right place to go
+		while(temp != NULL){
+			if(strcmp(temp->label,label) < 0){
+				prev->next = newNode;
+				newNode ->next = temp;
+				return;
+			}
+			prev = temp;
+			temp = temp->next;
+		}
 		//insert to new node
-		temp->next = newNode;
+		prev->next = newNode;
 	}else{
 		*head = newNode;
 	}
 
 	return;
+}
+
+void symtab_printAll(){
+	for(int i=SYM_SIZE-1;i>=0;i--)
+		symtab_print(symboltable[i]);
 }
 
 void symtab_print(symtab *head){
