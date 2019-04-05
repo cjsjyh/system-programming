@@ -1,6 +1,7 @@
 #include "commands.h"
 #include "util.h"
 #include "20151619.h"
+#include <math.h>
 #include "ds.h"
 
 //Prints Help
@@ -29,7 +30,7 @@ void cmd_assemble(char* filename){
 	char line[200]={0,};
 	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
 	char* tempContent;
-	int argCount, num, numCount;
+	int argCount, num, numCount, base, hashindex;
 	int isFirst = TRUE, errorFlag = FALSE;
 	int opcode,format=-1, locctr=0,i=0;
 	
@@ -74,12 +75,13 @@ void cmd_assemble(char* filename){
 			isFirst = FALSE;
 		}
 
-		if(argCount < 0)
-			printf("[OP2:%s] %s",operand2,line);
 		if(strcmp(label,"")){
 			int index = symfunction(label);
 			printf("[label:%s] %s",label,line);
-			symtab_push(&(symboltable[index]), label, locctr);
+			if(symtab_push(&(symboltable[index]), label, locctr) == -1){
+				errorFlag = TRUE;
+				printf("%s already exists!\n",label);
+			}
 		}
 			
 
@@ -142,7 +144,7 @@ void cmd_assemble(char* filename){
 				tempContent = extractContent(operand);
 				if(operand[0] == 'X'){
 					num = (int)strlen(tempContent);
-					locctr += num;
+					locctr += ceil((float)num/2);
 					//printf("[%X]BYTE operand %X\n",locctr,num);
 					//get size of hex
 				}
@@ -162,7 +164,8 @@ void cmd_assemble(char* filename){
 				//printf("[%X]END operand %d\n",locctr,num);
 			}
 			else if(!strcmp(operation,"BASE")){
-				
+				//hashindex = symfunction(operand);
+				//base = symtab_search(symboltable[hashindex],operand);
 			}
 			//unknown directive
 			else{
@@ -172,6 +175,7 @@ void cmd_assemble(char* filename){
 
 		}//else
 
+		/*
 		if (intermediate == NULL)
 			intermediate = newinterm;
 		else{
@@ -180,6 +184,11 @@ void cmd_assemble(char* filename){
 			while(temp->next != NULL)
 				temp = temp->next;
 			temp->next = newinterm;
+		}
+		*/
+		if(errorFlag){
+			printf("Error while assembling!\n");
+			return;
 		}
 
 		//reset
@@ -192,21 +201,61 @@ void cmd_assemble(char* filename){
 	}//while
 	fclose(fp);
 
+	/*
+	typedef struct interm {
+		int addr;
+		int format;
+		int argCount;
+		char operation[30];
+		char operand[20];
+		char operand2[20];
+		intermptr next;
+	}interm;
+	*/
+
 	//PASS 2
+	/*
 	if (intermediate == NULL){
 		printf("No lines to assemble\n");
 	}
 	else{
+		int offset, pc, base,hashindex;
+		int obj12,obj3,obj4;
 		intermptr curline;
 		curline = intermediate;
-		while(curline->next != NULL){
-		
-		
+
+		while(curline != NULL){
+			//first 2 digits of object code
+			obj12 = hashSearch_opcode(operation);
+			obj12 += addressingMode(operand);
+
+			//for format 3 and 4
+			if(curline->format >= 3){
+				//Set flag for indexed addressing
+				if(!strcmp(operand2,"X"))
+					obj3 = 8;
+				else
+					obj3 = 0;
+				//Check if operation is LDB and set base variable
+				hashindex = symfunction(curline->operand);
+				offset = symtab_search(symboltable[hashindex],curline->operand);
+				//check for PC relative
+				pc = curline->next->addr;
+				if(offset - pc >= -2048 && offset - pc <= 2047){
+					//use pc relative
+					offset = offset - pc;
+				}
+				else{
+					//use base relative
+					offset = offset - base;
+				}
+
+			}
 		
 			curline = curline->next;
 		}
 	}
-
+	*/
 	newsymtable = FALSE;
 }
 
@@ -407,4 +456,13 @@ char* hashSearch_format(char* mnem) {
 		temp = temp->next;
 	}
 	return NULL;
+}
+
+int addressingMode(char* str){
+	if(str[0] == '#')
+		return 1;
+	else if(str[0] == '@')
+		return 2;
+	else
+		return 3;
 }

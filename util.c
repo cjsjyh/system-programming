@@ -148,3 +148,9 @@ int HexBitCount(int num){
 int HexByteCount(int num){
 	return (int)(ceil((float)num/2));
 }
+
+int insertHexAt(int orig, int value, int index){
+	for(int i=0;i<index;i++)
+		value *= 16;
+	return origin + value;
+}

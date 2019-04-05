@@ -15,7 +15,7 @@ int cmd_edit(int, int);
 int cmd_fill(int, int, int);
 int hashSearch_opcode(char*);
 char* hashSearch_format(char*);
-
+int addressingMode(char*);
 
 
 #endif

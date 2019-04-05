@@ -115,7 +115,7 @@ void hashlist_printAll(hptr *head){
 	}
 }
 
-void symtab_push(symtab **head,char* label,int addr){
+int symtab_push(symtab **head,char* label,int addr){
 	symtab *temp;
 	symtab *prev;
 
@@ -139,10 +139,13 @@ void symtab_push(symtab **head,char* label,int addr){
 		}
 		//Search for the right place to go
 		while(temp != NULL){
+			//duplicate symbol
+			if(!strcmp(temp->label,label))
+				return TRUE;
 			if(strcmp(temp->label,label) < 0){
 				prev->next = newNode;
 				newNode ->next = temp;
-				return;
+				return FALSE;
 			}
 			prev = temp;
 			temp = temp->next;
@@ -153,7 +156,17 @@ void symtab_push(symtab **head,char* label,int addr){
 		*head = newNode;
 	}
 
-	return;
+	return FALSE;
+}
+
+int symtab_search(symtab* head,char* label){
+	symptr temp = head;
+	while(temp != NULL){
+		if(!strcmp(temp->label,label))
+			return temp->addr;
+		temp = temp->next;
+	}
+	return -1;
 }
 
 void symtab_printAll(){

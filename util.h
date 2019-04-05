@@ -14,5 +14,6 @@ int isDec(char*);
 int isHex(char*);
 int inRange(int,int,int);
 int HexBitCount(int);
+int insertHexAt(int,int,int);
 
 #endif

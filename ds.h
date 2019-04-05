@@ -49,10 +49,10 @@ typedef struct symtab {
 	symptr next;
 }symtab;
 int symfunction(char*);
-
-void symtab_push(symtab**,char*,int);
+int symtab_push(symtab**,char*,int);
 void symtab_print(symptr);
 void symtab_printAll();
+int symtab_search(symtab*,char*);
 
 void interm_push(intermptr*, intermptr);
 
