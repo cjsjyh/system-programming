@@ -12,6 +12,7 @@ typedef struct interm {
     char operation[30];
     char operand[20];
     char operand2[20];
+	char line[200];
     intermptr next;
 }interm;
 

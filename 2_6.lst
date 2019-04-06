@@ -1,0 +1,47 @@
+[1000]	FIRST   STL     RETADR  	172033
+[1003]	        LDB     #RDREC  	694000
+[1006]	CLOOP   JSUB    RDREC   	4B4000
+[1009]	        LDA     LENGTH  	03202D
+[100C]	        COMP    ZERO    	2B2024
+[100F]	        JEQ     ENDFIL  	332006
+[1012]	        JSUB    WRREC   	4B4028
+[1015]	        J       CLOOP   	3F2FEE
+[1018]	ENDFIL  LDA     EOF     	032012
+[101B]	        STA     BUFFER  	0F201E
+[101E]	        LDA     THREE   	03200F
+[1021]	        STA     LENGTH  	0F2015
+[1024]	        JSUB    WRREC   	4B4028
+[1027]	        LDL     RETADR  	0B200C
+[102A]	        RSUB            	4F0000
+[102D]	EOF     BYTE    C'EOF'
+ 	454F46
+[1030]	THREE   WORD    3
+      	000003
+[1033]	ZERO    WORD    0
+      	000000
+[203C]	RDREC   LDX     ZERO    	074FF7
+[203F]	        LDA     ZERO    	034FF7
+[2042]	RLOOP   TD      INPUT   	E3201B
+[2045]	        JEQ     RLOOP   	332FFA
+[2048]	        RD   INPUT      	DB2015
+[204B]	        COMP    ZERO    	2B4FF7
+[204E]	        JEQ     EXIT    	332009
+[2051]	        STCH    BUFFER, X	57C000
+[2054]	        TIX     MAXLEN  	2F200A
+[2057]	        JLT     RLOOP   	3B2FE8
+[205A]	EXIT    STX     LENGTH  	134FFD
+[205D]	        RSUB            	4F0000
+[2060]	INPUT   BYTE    X'F1'
+  	F1
+[2061]	MAXLEN  WORD    4096
+   	001000
+[2064]	WRREC   LDX     ZERO    	074FF7
+[2067]	WLOOP   TD      OUTPUT  	E32012
+[206A]	        JEQ     WLOOP   	332FFA
+[206D]	        LDCH    BUFFER, X	53C000
+[2070]	        WD      OUTPUT  	DF2009
+[2073]	        TIX     LENGTH  	2F4FFD
+[2076]	        JLT     WLOOP   	3B2FEE
+[2079]	        RSUB            	4F0000
+[207C]	OUTPUT  BYTE    X'05'
+  	05

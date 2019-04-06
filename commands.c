@@ -29,29 +29,22 @@ void cmd_assemble(char* filename){
 	FILE *fp = fopen(filename, "r");
 	char line[200]={0,};
 	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
-	char* tempContent;
+	char* tempContent, *fname, *fname1, *fname2;
 	int argCount, num, numCount, base, hashindex;
 	int isFirst = TRUE, errorFlag = FALSE;
 	int opcode,format=-1, locctr=0,i=0;
 	
 	intermptr intermediate=NULL;
 	intermptr newinterm;
+	symptr* tempsymtab; 
 
 	//PASS 1
 	if (fp == NULL){
 		printf("File doesn't exist!\n");
 		return;
 	}
-
-	//if symbol table is alreay set, clear
-	if(!newsymtable){
-		for(int i = SYM_SIZE; i>=0; i--)
-			free(symboltable[i]);
-		free(symboltable);
-		symboltable = NULL;
-	}
-
-	symboltable = (symptr*)calloc(SYM_SIZE,sizeof(symptr)*SYM_SIZE);
+	
+	tempsymtab = (symptr*)calloc(SYM_SIZE,sizeof(symptr)*SYM_SIZE);
 
 	//Get 1 line at a time from file until NULL
 	while(fgets(line,200,fp) != NULL && errorFlag == FALSE){
@@ -77,8 +70,7 @@ void cmd_assemble(char* filename){
 
 		if(strcmp(label,"")){
 			int index = symfunction(label);
-			printf("[label:%s] %s",label,line);
-			if(symtab_push(&(symboltable[index]), label, locctr) == -1){
+			if(symtab_push(&(tempsymtab[index]), label, locctr) == -1){
 				errorFlag = TRUE;
 				printf("%s already exists!\n",label);
 			}
@@ -86,12 +78,10 @@ void cmd_assemble(char* filename){
 			
 
 		//make new node for a line of intermediate file
-		newinterm = (intermptr)malloc(sizeof(interm));
+		newinterm = (intermptr)calloc(1,sizeof(interm));
 		newinterm->addr = locctr;
 		newinterm->next = NULL;
 		newinterm->argCount = argCount;
-
-		printf("[%X] %s",locctr,line);
 
 		//Handle format 4 exception
 		if(operation[0] == '+'){
@@ -118,25 +108,21 @@ void cmd_assemble(char* filename){
 		newinterm->format = format;
 		strcpy(newinterm->operand,operand);
 		strcpy(newinterm->operand2,operand2);
+		strcpy(newinterm->line,line);
 		interm_push(&intermediate,newinterm);
-
-		
 
 		//increase LOCCTR
 		if(format != -1){
-			//printf("[%X]%s is format %d\n",locctr,operation,format);
 			locctr += format;
 		}//if
 		//directives without opcode such as RESB, RESW
 		else{
 			if(!strcmp(operation,"RESW")){
 				num = StrToInt(operand);
-				//printf("[%X]RESW operand %d\n",locctr,num);
 				locctr += num * 3;
 			}
 			else if(!strcmp(operation,"RESB")){
 				num = StrToInt(operand);
-				//printf("\n[%X]RESB operand %d\n",locctr,num);
 				locctr += num;
 			}
 			else if(!strcmp(operation, "BYTE")){
@@ -145,8 +131,6 @@ void cmd_assemble(char* filename){
 				if(operand[0] == 'X'){
 					num = (int)strlen(tempContent);
 					locctr += ceil((float)num/2);
-					//printf("[%X]BYTE operand %X\n",locctr,num);
-					//get size of hex
 				}
 				else if(operand[0] == 'C'){
 					//printf("[%X]BYTE operand %s\n",locctr,tempContent);
@@ -157,15 +141,13 @@ void cmd_assemble(char* filename){
 			}
 			else if(!strcmp(operation, "WORD")){
 				num = StrToInt(operand);	
-				//printf("[%X]WORD operand %d\n",locctr,num);
 				locctr += 3;
 			}
 			else if(!strcmp(operation,"END")){
 				//printf("[%X]END operand %d\n",locctr,num);
 			}
 			else if(!strcmp(operation,"BASE")){
-				//hashindex = symfunction(operand);
-				//base = symtab_search(symboltable[hashindex],operand);
+				//base = symtab_search(tempsymtab[hashindex],operand);
 			}
 			//unknown directive
 			else{
@@ -190,10 +172,6 @@ void cmd_assemble(char* filename){
 	}//while
 	fclose(fp);
 
-	printf("\n\n\n");
-
-	symtab_printAll();
-
 	//PASS 2
 	if (intermediate == NULL){
 		printf("No lines to assemble\n");
@@ -202,20 +180,27 @@ void cmd_assemble(char* filename){
 		int offset, pc, hashindex;
 		unsigned int obj12=0,obj3=0,obj4=0;
 		char strcontent[30];
+
+		FILE *output, *output2;
 		intermptr curline;
 		curline = intermediate;
 
+		//open output file
+		fname = strtok(filename,".");
+		fname1 = strcat(fname,".lst");
+		fname2 = strcat(fname,".obj");
+		output = fopen(fname1,"w+");
+		output2 = fopen(fname2,"w+");
+
+		//Start Header record
+		fprintf(output2,"H");
+
 		while(curline != NULL && errorFlag == FALSE){
 			//lines that don't produce opcodes
-			if(compareString(curline->operation,"RESW","RESB")){
-				curline = curline->next;
-				continue;
-			}
-			else if(compareString(curline->operation,"START","END")){
-				curline = curline->next;
-				continue;
-			}
-			else if(compareString(curline->operation,"BASE",NULL)){
+			curline->line[strlen(curline->line)-1] = '\0';
+			if(compareString(curline->operation,"RESW","RESB") || compareString(curline->operation,"START","END") || compareString(curline->operation,"BASE",NULL)){
+				fprintf(output,"%04X\t",curline->addr);
+				fprintf(output,"%-25s\n",curline->line);
 				curline = curline->next;
 				continue;
 			}
@@ -279,8 +264,7 @@ void cmd_assemble(char* filename){
 
 					//Check if operation is LDB and set base variable
 					hashindex = symfunction(strcontent);
-					//printf("index = %d operand %s\n",hashindex,strcontent);
-					offset = symtab_search(symboltable[hashindex],strcontent);
+					offset = symtab_search(tempsymtab[hashindex],strcontent);
 					if(!strcmp(curline->operation,"LDB"))
 						base = offset;
 					//operand doesn't exist in the symbol table
@@ -301,18 +285,15 @@ void cmd_assemble(char* filename){
 						else{
 							//check for PC relative
 							pc = curline->next->addr;
-							//printf("OFFSET: %X PC: %X result: %X ",offset,pc,offset-pc);
 							if(offset - pc >= -2048 && offset - pc <= 2047){
 								//use pc relative
 								obj4 = offset - pc;
 								obj3 += 2;
-								//printf("PC RELATIVE\n");
 							}
 							else{
 								//use base relative
 								obj4 = offset - base;
 								obj3 += 4;
-								//printf("BASE RELATIVE\n");
 							}
 						}
 					}
@@ -321,38 +302,50 @@ void cmd_assemble(char* filename){
 					obj12 += 3;
 				}	
 			}
+			//When BYTE directive is inserted
 			else if(!strcmp(curline->operation, "BYTE")){
-				//Character input
+				//Extract content, removing C and X
 				char *tempContent = extractContent(curline->operand);
-				printf("[%04X] ",curline->addr);
+				fprintf(output,"%04X\t",curline->addr);
+				fprintf(output,"%-25s\t",curline->line);
 				if(curline->operand[0] == 'X'){
-					printf("%s\n",tempContent);
+					fprintf(output,"%s\n",tempContent);
 				}
+				//Character inserted
 				else if(curline->operand[0] == 'C'){
 					for(int i=0; i<strlen(tempContent); i++)
-						printf("%2X",(int)(tempContent[i]));
-					printf("\n");
+						fprintf(output,"%2X",(int)(tempContent[i]));
+					fprintf(output,"\n");
 				}
 				else
-					printf("What is this input? %s\n",curline->operand);
-				
+					fprintf(output,"What is this input? %s\n",curline->operand);
 				curline = curline->next;
 				continue;
 			}//format3,4 if
-			printf("[%04X] ",curline->addr);
-			
+			else if(!strcmp(curline->operation, "WORD")){
+				//Character input
+				int temp = StrToInt(curline->operand);
+				fprintf(output,"%04X\t",curline->addr);
+				fprintf(output,"%-25s\t",curline->line);
+				fprintf(output,"%06X\n",temp);
+				curline = curline->next;
+				continue;
+			}
+
+			fprintf(output,"%04X\t",curline->addr);
+			fprintf(output,"%-25s\t",curline->line);
 			switch(curline->format){
 				case 1:
-					printf("%02X\n",obj12);
+					fprintf(output,"%02X\n",obj12);
 					break;
 				case 2:
-					printf("%02X%02X\n",obj12,obj3);
+					fprintf(output,"%02X%02X\n",obj12,obj3);
 					break;
 				case 3:
-					printf("%02X%01X%03X\n",obj12,obj3,obj4%(1<<12));
+					fprintf(output,"%02X%01X%03X\n",obj12,obj3,obj4%(1<<12));
 					break;
 				case 4:
-					printf("%02X%01X%05X\n",obj12,obj3,obj4%(1<<20));
+					fprintf(output,"%02X%01X%05X\n",obj12,obj3,obj4%(1<<20));
 					break;
 				default:
 					printf("OTHER!: %s\n",curline->operation);
@@ -360,10 +353,22 @@ void cmd_assemble(char* filename){
 			
 			curline = curline->next;
 		}//while
-	}
-	
-	if(errorFlag)
+
+		fclose(output);
+		fclose(output2);
+	}//else
+
+	if(errorFlag){
 		printf("ERROR!!\n");
+	}
+	//if symbol table is alreay set, clear
+	if(!newsymtable){
+		for(int i = SYM_SIZE; i>=0; i--)
+			free(symboltable[i]);
+		free(symboltable);
+		symboltable = NULL;
+	}
+	symboltable = tempsymtab;
 	newsymtable = FALSE;
 }
 

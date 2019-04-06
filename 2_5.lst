@@ -1,0 +1,43 @@
+[0000]	FIRST  STL    RETAD      ENDL	17202D
+[0003]	       LDB    #LENGT     ENDL	69202D
+[0006]	CLOOP  +JSUB  RDRE       ENDL	4B101036
+[000A]	       LDA    LENGT      ENDL	032026
+[000D]	       COMP   #          ENDL	290000
+[0010]	       JEQ    ENDFI      ENDL	332007
+[0013]	       +JSUB  WRRE       ENDL	4B10105D
+[0017]	       J      CLOO       ENDL	3F2FEC
+[001A]	ENDFIL LDA    EO         ENDL	032010
+[001D]	       STA    BUFFE      ENDL	0F2016
+[0020]	       LDA    #          ENDL	010003
+[0023]	       STA    LENGT      ENDL	0F200D
+[0026]	       +JSUB  WRRE       ENDL	4B10105D
+[002A]	       J      @RETAD     ENDL	3E2003
+[002D]	EOF    BYTE   C'EOF'
+    ENDL	454F46
+[1036]	RDREC  CLEAR             ENDL	B410
+[1038]	       CLEAR             ENDL	B400
+[103A]	       CLEAR             ENDL	B440
+[103C]	       +LDT   #409       ENDL	75101000
+[1040]	RLOOP  TD     INPU       ENDL	E32019
+[1043]	       JEQ    RLOO       ENDL	332FFA
+[1046]	       RD     INPU       ENDL	DB2013
+[1049]	       COMPR  A,         ENDL	A004
+[104B]	       JEQ    EXI        ENDL	332008
+[104E]	       STCH   BUFFER,    ENDL	57C003
+[1051]	       TIXR              ENDL	B850
+[1053]	       JLT    RLOO       ENDL	3B2FEA
+[1056]	EXIT   STX    LENGT      ENDL	134000
+[1059]	       RSU               ENDL	4F0000
+[105C]	INPUT  BYTE   X'F1'
+     ENDL	F1
+[105D]	WRREC  CLEAR             ENDL	B410
+[105F]	       LDT    LENGT      ENDL	774000
+[1062]	WLOOP  TD     OUTPU      ENDL	E32011
+[1065]	       JEQ    WLOO       ENDL	332FFA
+[1068]	       LDCH   BUFFER,    ENDL	53C003
+[106B]	       WD     OUTPU      ENDL	DF2008
+[106E]	       TIXR              ENDL	B850
+[1070]	       JLT    WLOO       ENDL	3B2FEF
+[1073]	       RSU               ENDL	4F0000
+[1076]	OUTPUT BYTE   X'05'
+     ENDL	05
