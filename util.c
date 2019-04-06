@@ -175,5 +175,5 @@ int registerNum(char* reg){
 	else if(!strcmp(reg,"F"))
 		return 6;
 	else
-		return 0;
+		return -1;
 }

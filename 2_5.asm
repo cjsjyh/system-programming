@@ -29,6 +29,7 @@ RLOOP  TD     INPUT
        JEQ    RLOOP
        RD     INPUT
        COMPR  A, S
+
        JEQ    EXIT
        STCH   BUFFER, X
        TIXR   T

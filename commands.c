@@ -54,7 +54,7 @@ void cmd_assemble(char* filename){
 	symboltable = (symptr*)calloc(SYM_SIZE,sizeof(symptr)*SYM_SIZE);
 
 	//Get 1 line at a time from file until NULL
-	while(fgets(line,200,fp) != NULL){
+	while(fgets(line,200,fp) != NULL && errorFlag == FALSE){
 		//empty line
 		if(!strcmp(line,"") || !strcmp(line,"\n"))
 			continue;
@@ -191,27 +191,6 @@ void cmd_assemble(char* filename){
 	fclose(fp);
 
 	printf("\n\n\n");
-	/*
-	typedef struct interm {
-		int addr;
-		int format;
-		int argCount;
-		char operation[30];
-		char operand[20];
-		char operand2[20];
-		intermptr next;
-	}interm;
-	*/
-
-	/*
-	intermptr temp;
-	temp = intermediate;
-	while(temp->next != NULL){
-		printf("%X\n",temp->addr);
-		temp = temp->next;
-
-	}
-	*/
 
 	symtab_printAll();
 
@@ -226,7 +205,7 @@ void cmd_assemble(char* filename){
 		intermptr curline;
 		curline = intermediate;
 
-		while(curline != NULL){
+		while(curline != NULL && errorFlag == FALSE){
 			//lines that don't produce opcodes
 			if(compareString(curline->operation,"RESW","RESB")){
 				curline = curline->next;
@@ -241,80 +220,124 @@ void cmd_assemble(char* filename){
 				continue;
 			}
 
-
 			//initialize variables
-			obj12 = 0;
-			obj3 = 0;
-			obj4 = 0;
+			obj12 = obj3 = obj4 = 0;
 
 			//first 2 digits of object code
 			obj12 = hashSearch_opcode(curline->operation);
-			obj12 += addressingMode(curline->operand);
 
-			
-			//for format 3 and 4
-			if(curline->format >= 3){
-				//Set flag for indexed addressing
-				if(!strcmp(curline->operand2,"X"))
-					obj3 = 8;
-				else
-					obj3 = 0;
-				
-				//if format is 4, set e flag to 1
-				
-
-				//immediate addressing
-				if(curline->operand[0] == '#'){
-					obj12 + 1;
-					strcpy(strcontent,curline->operand +1);
-					//printf("immediate %s\n",strcontent);
+			if(curline->format == 2){
+				if(!strcmp(curline->operand,"SVC")){
+					int temp = StrToHex(curline->operand);
+					obj3 = insertHexAt(obj3,temp,1);
 				}
-				//indirect addressing
-				else if(curline->operand[0] == '@'){
-					obj12 + 2;
-					strcpy(strcontent,curline->operand +1);
-					//printf("indirect %s\n",strcontent);
-				}
-				//simple addresing
 				else{
-					strcpy(strcontent,curline->operand);
-					obj12+3;
-					//printf("simple %s\n",strcontent);
-				}
-				
-				//Check if operation is LDB and set base variable
-				hashindex = symfunction(strcontent);
-				//printf("index = %d operand %s\n",hashindex,strcontent);
-				offset = symtab_search(symboltable[hashindex],strcontent);
-				if(!strcmp(curline->operation,"LDB"))
-					base = offset;
-
-				if(offset != -1){
-					//if format4, direct addressing
-					if(curline->format == 4){
-						obj3++;
-						obj4 = offset;
+					int temp = registerNum(curline->operand);
+					//if operand isn't a register
+					if(temp == -1){
+						
+						errorFlag = TRUE;
+						continue;
 					}
-					else{
-						//check for PC relative
-						pc = curline->next->addr;
-						//printf("OFFSET: %X PC: %X result: %X ",offset,pc,offset-pc);
-						if(offset - pc >= -2048 && offset - pc <= 2047){
-							//use pc relative
-							obj4 = offset - pc;
-							obj3 += 2;
-							//printf("PC RELATIVE\n");
+					obj3 = insertHexAt(obj3,temp,1);
+					//If second operand exists
+					if(curline->argCount < 0){
+						if(compareString(curline->operand2,"SHIFTL","SHIFTR")){
+							temp = StrToHex(curline->operand2);
+							obj3 = insertHexAt(obj3,temp,0);
 						}
 						else{
-							//use base relative
-							obj4 = offset - base;
-							obj3 += 4;
-							//printf("BASE RELATIVE\n");
+							temp = registerNum(curline->operand2);
+							//if operand isn't a register
+							if(temp == -1){
+								
+								errorFlag = TRUE;
+								continue;
+							}
+							obj3 = insertHexAt(obj3,temp,0);
+						}
+						
+					}
+				}//else
+			}
+			else if(curline->format >= 3){
+				//set e flag for format 4
+				if(curline->format == 4)
+						obj3++;
+				if(abs(curline->argCount) > 1){
+					//set flag for addressing mode
+					obj12 += addressingMode(curline->operand);
+					//Set flag for indexed addressing
+					if(!strcmp(curline->operand2,"X"))
+						obj3 += 8;
+					
+					//remove first character
+					if(curline->operand[0] == '#' || curline->operand[0] == '@')
+						strcpy(strcontent,curline->operand +1);
+					else
+						strcpy(strcontent,curline->operand);
+
+					//Check if operation is LDB and set base variable
+					hashindex = symfunction(strcontent);
+					//printf("index = %d operand %s\n",hashindex,strcontent);
+					offset = symtab_search(symboltable[hashindex],strcontent);
+					if(!strcmp(curline->operation,"LDB"))
+						base = offset;
+					//operand doesn't exist in the symbol table
+					if(offset == -1){
+						int temp = StrToInt(strcontent);
+						if (temp != -1)
+							obj4 += temp;
+						else{
+							printf("%s error here\n",strcontent);
+							errorFlag = TRUE;
+							continue;
 						}
 					}
+					else{
+						//if format4, direct addressing
+						if(curline->format == 4)
+							obj4 = offset;
+						else{
+							//check for PC relative
+							pc = curline->next->addr;
+							//printf("OFFSET: %X PC: %X result: %X ",offset,pc,offset-pc);
+							if(offset - pc >= -2048 && offset - pc <= 2047){
+								//use pc relative
+								obj4 = offset - pc;
+								obj3 += 2;
+								//printf("PC RELATIVE\n");
+							}
+							else{
+								//use base relative
+								obj4 = offset - base;
+								obj3 += 4;
+								//printf("BASE RELATIVE\n");
+							}
+						}
+					}
+				}//if argCount > 1
+				else{
+					obj12 += 3;
+				}	
+			}
+			else if(!strcmp(curline->operation, "BYTE")){
+				//Character input
+				char *tempContent = extractContent(curline->operand);
+				printf("[%04X] ",curline->addr);
+				if(curline->operand[0] == 'X'){
+					printf("%s\n",tempContent);
 				}
+				else if(curline->operand[0] == 'C'){
+					for(int i=0; i<strlen(tempContent); i++)
+						printf("%2X",(int)(tempContent[i]));
+					printf("\n");
+				}
+				else
+					printf("What is this input? %s\n",curline->operand);
 				
-				
+				curline = curline->next;
+				continue;
 			}//format3,4 if
 			printf("[%04X] ",curline->addr);
 			
@@ -323,20 +346,24 @@ void cmd_assemble(char* filename){
 					printf("%02X\n",obj12);
 					break;
 				case 2:
-					printf("%02X %01X %01X\n",obj12,obj3,obj4);
+					printf("%02X%02X\n",obj12,obj3);
 					break;
 				case 3:
-					printf("%02X %01X %03X\n",obj12,obj3,obj4%(1<<12));
+					printf("%02X%01X%03X\n",obj12,obj3,obj4%(1<<12));
 					break;
 				case 4:
-					printf("%02X %01X %05X\n",obj12,obj3,obj4%(1<<20));
+					printf("%02X%01X%05X\n",obj12,obj3,obj4%(1<<20));
 					break;
+				default:
+					printf("OTHER!: %s\n",curline->operation);
 			}
 			
 			curline = curline->next;
 		}//while
 	}
 	
+	if(errorFlag)
+		printf("ERROR!!\n");
 	newsymtable = FALSE;
 }
 
