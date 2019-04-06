@@ -136,7 +136,7 @@ void cmd_assemble(char* filename){
 			}
 			else if(!strcmp(operation,"RESB")){
 				num = StrToInt(operand);
-				//printf("[%X]RESB operand %d\n",locctr,num);
+				//printf("\n[%X]RESB operand %d\n",locctr,num);
 				locctr += num;
 			}
 			else if(!strcmp(operation, "BYTE")){
@@ -175,17 +175,6 @@ void cmd_assemble(char* filename){
 
 		}//else
 
-		/*
-		if (intermediate == NULL)
-			intermediate = newinterm;
-		else{
-			intermptr temp;
-			temp = intermediate;
-			while(temp->next != NULL)
-				temp = temp->next;
-			temp->next = newinterm;
-		}
-		*/
 		if(errorFlag){
 			printf("Error while assembling!\n");
 			return;
@@ -201,6 +190,7 @@ void cmd_assemble(char* filename){
 	}//while
 	fclose(fp);
 
+	printf("\n\n\n");
 	/*
 	typedef struct interm {
 		int addr;
@@ -213,49 +203,140 @@ void cmd_assemble(char* filename){
 	}interm;
 	*/
 
-	//PASS 2
 	/*
+	intermptr temp;
+	temp = intermediate;
+	while(temp->next != NULL){
+		printf("%X\n",temp->addr);
+		temp = temp->next;
+
+	}
+	*/
+
+	symtab_printAll();
+
+	//PASS 2
 	if (intermediate == NULL){
 		printf("No lines to assemble\n");
 	}
 	else{
-		int offset, pc, base,hashindex;
-		int obj12,obj3,obj4;
+		int offset, pc, hashindex;
+		unsigned int obj12=0,obj3=0,obj4=0;
+		char strcontent[30];
 		intermptr curline;
 		curline = intermediate;
 
 		while(curline != NULL){
-			//first 2 digits of object code
-			obj12 = hashSearch_opcode(operation);
-			obj12 += addressingMode(operand);
+			//lines that don't produce opcodes
+			if(compareString(curline->operation,"RESW","RESB")){
+				curline = curline->next;
+				continue;
+			}
+			else if(compareString(curline->operation,"START","END")){
+				curline = curline->next;
+				continue;
+			}
+			else if(compareString(curline->operation,"BASE",NULL)){
+				curline = curline->next;
+				continue;
+			}
 
+
+			//initialize variables
+			obj12 = 0;
+			obj3 = 0;
+			obj4 = 0;
+
+			//first 2 digits of object code
+			obj12 = hashSearch_opcode(curline->operation);
+			obj12 += addressingMode(curline->operand);
+
+			
 			//for format 3 and 4
 			if(curline->format >= 3){
 				//Set flag for indexed addressing
-				if(!strcmp(operand2,"X"))
+				if(!strcmp(curline->operand2,"X"))
 					obj3 = 8;
 				else
 					obj3 = 0;
-				//Check if operation is LDB and set base variable
-				hashindex = symfunction(curline->operand);
-				offset = symtab_search(symboltable[hashindex],curline->operand);
-				//check for PC relative
-				pc = curline->next->addr;
-				if(offset - pc >= -2048 && offset - pc <= 2047){
-					//use pc relative
-					offset = offset - pc;
-				}
-				else{
-					//use base relative
-					offset = offset - base;
-				}
+				
+				//if format is 4, set e flag to 1
+				
 
+				//immediate addressing
+				if(curline->operand[0] == '#'){
+					obj12 + 1;
+					strcpy(strcontent,curline->operand +1);
+					//printf("immediate %s\n",strcontent);
+				}
+				//indirect addressing
+				else if(curline->operand[0] == '@'){
+					obj12 + 2;
+					strcpy(strcontent,curline->operand +1);
+					//printf("indirect %s\n",strcontent);
+				}
+				//simple addresing
+				else{
+					strcpy(strcontent,curline->operand);
+					obj12+3;
+					//printf("simple %s\n",strcontent);
+				}
+				
+				//Check if operation is LDB and set base variable
+				hashindex = symfunction(strcontent);
+				//printf("index = %d operand %s\n",hashindex,strcontent);
+				offset = symtab_search(symboltable[hashindex],strcontent);
+				if(!strcmp(curline->operation,"LDB"))
+					base = offset;
+
+				if(offset != -1){
+					//if format4, direct addressing
+					if(curline->format == 4){
+						obj3++;
+						obj4 = offset;
+					}
+					else{
+						//check for PC relative
+						pc = curline->next->addr;
+						//printf("OFFSET: %X PC: %X result: %X ",offset,pc,offset-pc);
+						if(offset - pc >= -2048 && offset - pc <= 2047){
+							//use pc relative
+							obj4 = offset - pc;
+							obj3 += 2;
+							//printf("PC RELATIVE\n");
+						}
+						else{
+							//use base relative
+							obj4 = offset - base;
+							obj3 += 4;
+							//printf("BASE RELATIVE\n");
+						}
+					}
+				}
+				
+				
+			}//format3,4 if
+			printf("[%04X] ",curline->addr);
+			
+			switch(curline->format){
+				case 1:
+					printf("%02X\n",obj12);
+					break;
+				case 2:
+					printf("%02X %01X %01X\n",obj12,obj3,obj4);
+					break;
+				case 3:
+					printf("%02X %01X %03X\n",obj12,obj3,obj4%(1<<12));
+					break;
+				case 4:
+					printf("%02X %01X %05X\n",obj12,obj3,obj4%(1<<20));
+					break;
 			}
-		
+			
 			curline = curline->next;
-		}
+		}//while
 	}
-	*/
+	
 	newsymtable = FALSE;
 }
 

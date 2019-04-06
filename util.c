@@ -152,5 +152,28 @@ int HexByteCount(int num){
 int insertHexAt(int orig, int value, int index){
 	for(int i=0;i<index;i++)
 		value *= 16;
-	return origin + value;
+	return orig + value;
+}
+
+int registerNum(char* reg){
+	if(!strcmp(reg,"A"))
+		return 0;
+	else if(!strcmp(reg,"X"))
+		return 1;
+	else if(!strcmp(reg,"L"))
+		return 2;
+	else if(!strcmp(reg,"PC"))
+		return 8;
+	else if(!strcmp(reg,"SW"))
+		return 9;
+	else if(!strcmp(reg,"B"))
+		return 3;
+	else if(!strcmp(reg,"S"))
+		return 4;
+	else if(!strcmp(reg,"T"))
+		return 5;
+	else if(!strcmp(reg,"F"))
+		return 6;
+	else
+		return 0;
 }

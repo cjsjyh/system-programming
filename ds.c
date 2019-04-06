@@ -131,7 +131,7 @@ int symtab_push(symtab **head,char* label,int addr){
 		if (strcmp((*head)->label, label) < 0){
 			newNode->next = *head;
 			*head = newNode;
-			return;
+			return FALSE;
 		}
 		else{
 			temp = (*head)->next;
@@ -160,11 +160,10 @@ int symtab_push(symtab **head,char* label,int addr){
 }
 
 int symtab_search(symtab* head,char* label){
-	symptr temp = head;
-	while(temp != NULL){
-		if(!strcmp(temp->label,label))
-			return temp->addr;
-		temp = temp->next;
+	while(head != NULL){
+		if(!strcmp(head->label,label))
+			return head->addr;
+		head = head->next;
 	}
 	return -1;
 }
