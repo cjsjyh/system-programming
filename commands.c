@@ -29,7 +29,7 @@ void cmd_assemble(char* filename){
 	FILE *fp = fopen(filename, "r");
 	char line[200]={0,};
 	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
-	char* tempContent, *fname, *fname1, *fname2;
+	char* tempContent, *fname, fname1[30], fname2[30];
 	int argCount, num, numCount, base, hashindex;
 	int isFirst = TRUE, errorFlag = FALSE;
 	int opcode,format=-1, locctr=0,i=0;
@@ -109,6 +109,7 @@ void cmd_assemble(char* filename){
 		strcpy(newinterm->operand,operand);
 		strcpy(newinterm->operand2,operand2);
 		strcpy(newinterm->line,line);
+		strcpy(newinterm->label,label);
 		interm_push(&intermediate,newinterm);
 
 		//increase LOCCTR
@@ -177,7 +178,7 @@ void cmd_assemble(char* filename){
 		printf("No lines to assemble\n");
 	}
 	else{
-		int offset, pc, hashindex;
+		int offset, pc, hashindex, linenum=0;
 		unsigned int obj12=0,obj3=0,obj4=0;
 		char strcontent[30];
 
@@ -187,8 +188,10 @@ void cmd_assemble(char* filename){
 
 		//open output file
 		fname = strtok(filename,".");
-		fname1 = strcat(fname,".lst");
-		fname2 = strcat(fname,".obj");
+		strcpy(fname1,fname);
+		strcpy(fname2,fname);
+		strcat(fname1,".lst");
+		strcat(fname2,".obj");	
 		output = fopen(fname1,"w+");
 		output2 = fopen(fname2,"w+");
 
@@ -198,9 +201,28 @@ void cmd_assemble(char* filename){
 		while(curline != NULL && errorFlag == FALSE){
 			//lines that don't produce opcodes
 			curline->line[strlen(curline->line)-1] = '\0';
-			if(compareString(curline->operation,"RESW","RESB") || compareString(curline->operation,"START","END") || compareString(curline->operation,"BASE",NULL)){
-				fprintf(output,"%04X\t",curline->addr);
-				fprintf(output,"%-25s\n",curline->line);
+			fprintf(output,"%04d\t",linenum);
+			fprintf(output,"%04X\t",curline->addr);
+			fprintf(output,"%-30s",curline->line);
+			linenum +=5;
+
+			if(compareString(curline->operation,"RESW","RESB") || compareString(curline->operation,"BASE",NULL)){
+				fprintf(output,"\n");
+				curline = curline->next;
+				continue;
+			}
+			else if(!strcmp(curline->operation,"START")){
+				fprintf(output,"\n");
+				curline = curline->next;
+				continue;
+			}
+			else if(!strcmp(curline->operation,"END")){
+				//get the address of the symbol that END points
+				hashindex = symfunction(curline->operand);
+				offset = symtab_search(tempsymtab[hashindex],curline->operand);
+				fprintf(output,"\n");
+				fprintf(output2,"\nE%6X",offset);
+				
 				curline = curline->next;
 				continue;
 			}
@@ -306,8 +328,6 @@ void cmd_assemble(char* filename){
 			else if(!strcmp(curline->operation, "BYTE")){
 				//Extract content, removing C and X
 				char *tempContent = extractContent(curline->operand);
-				fprintf(output,"%04X\t",curline->addr);
-				fprintf(output,"%-25s\t",curline->line);
 				if(curline->operand[0] == 'X'){
 					fprintf(output,"%s\n",tempContent);
 				}
@@ -325,15 +345,11 @@ void cmd_assemble(char* filename){
 			else if(!strcmp(curline->operation, "WORD")){
 				//Character input
 				int temp = StrToInt(curline->operand);
-				fprintf(output,"%04X\t",curline->addr);
-				fprintf(output,"%-25s\t",curline->line);
 				fprintf(output,"%06X\n",temp);
 				curline = curline->next;
 				continue;
 			}
 
-			fprintf(output,"%04X\t",curline->addr);
-			fprintf(output,"%-25s\t",curline->line);
 			switch(curline->format){
 				case 1:
 					fprintf(output,"%02X\n",obj12);
