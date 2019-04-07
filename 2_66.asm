@@ -1,5 +1,5 @@
 COPY    START   1000
-        LDB     #LENGTH
+        +LDB     #LENGTH
 FIRST   STL     RETADR
 CLOOP   JSUB    RDREC
         LDA     LENGTH

@@ -244,7 +244,7 @@ void cmd_assemble(char* filename){
 
 				fprintf(objfile,"%-6s",curline->label);
 				fprintf(objfile,"%06X",curline->addr);
-				fprintf(objfile,"%06X\n",totalLength);
+				fprintf(objfile,"%06X\n",totalLength-curline->addr);
 				fprintf(objfile,"T%06X",curline->addr);
 				curline = curline->next;
 				continue;
@@ -368,11 +368,16 @@ void cmd_assemble(char* filename){
 					else{
 						//if format4, direct addressing
 						if(curline->format == 4){
-							modification[modfIdx++] = curline->addr + 1;
-							if(modfIdx == modfSize - 1){
-								modfSize *= 2;
-								modification = (int*)realloc(modification,sizeof(int)*modfSize);
+							//if it is not immediate addressing
+							if(curline->operand[0] != '#'){
+								//add to modification record
+								modification[modfIdx++] = curline->addr + 1;
+								if(modfIdx == modfSize - 1){
+									modfSize *= 2;
+									modification = (int*)realloc(modification,sizeof(int)*modfSize);
+								}
 							}
+							
 							obj4 = offset;
 						}
 						else{
