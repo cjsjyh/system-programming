@@ -27,7 +27,7 @@ void cmd_type(char* filename){
 
 void cmd_assemble(char* filename){
 	FILE *fp = fopen(filename, "r");
-	char line[200]={0,};
+	char line[200]={0,}, line2[200]={0,};
 	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
 	char* tempContent, *fname, fname1[30], fname2[30];
 	int argCount, num, numCount, base, hashindex, totalLength;
@@ -185,7 +185,10 @@ void cmd_assemble(char* filename){
 		printf("No lines to assemble\n");
 	}
 	else{
-		int offset, pc, hashindex, linenum=0;
+		int offset, pc, hashindex, newlineadr;
+		int colcount=0,colcount2=0, linenum=0, newlineFlag=FALSE;
+		int *modification = (int*)malloc(sizeof(int)*300);
+		int modfIdx=0,modfSize=300;
 		unsigned int obj12=0,obj3=0,obj4=0;
 		char strcontent[30];
 
@@ -204,8 +207,14 @@ void cmd_assemble(char* filename){
 
 		//Start Header record
 		fprintf(objfile,"H");
+		//reset values;
+		colcount = 9;
+		colcount2 = 0;
+		newlineadr = -1;
+		memset(line,0,sizeof(line));
 
 		while(curline != NULL && errorFlag == FALSE){
+			char objstr[3][20];
 			//lines that don't produce opcodes
 			curline->line[strlen(curline->line)-1] = '\0';
 			fprintf(lstfile,"%04d\t",linenum);
@@ -219,25 +228,41 @@ void cmd_assemble(char* filename){
 			fprintf(lstfile,"%-30s",curline->line);
 			linenum +=5;
 
-			if(compareString(curline->operation,"RESW","RESB") || compareString(curline->operation,"BASE",NULL)){
+			if(compareString(curline->operation,"RESW","RESB")){
+				fprintf(lstfile,"\n");
+				newlineFlag = TRUE;
+				curline = curline->next;
+				continue;
+			}
+			else if(!strcmp(curline->operation,"BASE")){
 				fprintf(lstfile,"\n");
 				curline = curline->next;
 				continue;
 			}
 			else if(!strcmp(curline->operation,"START")){
 				fprintf(lstfile,"\n");
-				fprintf(objfile,"%6s",curline->label);
+
+				fprintf(objfile,"%-6s",curline->label);
 				fprintf(objfile,"%06X",curline->addr);
 				fprintf(objfile,"%06X\n",totalLength);
+				fprintf(objfile,"T%06X",curline->addr);
 				curline = curline->next;
 				continue;
 			}
 			else if(!strcmp(curline->operation,"END")){
+				fprintf(lstfile,"\n");
+				//print last line TEXT LINE of obj file
+				if(strcmp(line,""))
+					fprintf(objfile,"%02X%s",(int)(strlen(line))/2,line);
+				if(strcmp(line2,""))
+					fprintf(objfile,"\nT%06X%s",newlineadr,line2);
+				//modification record
+				for(int k=0;k<modfIdx;k++)
+					fprintf(objfile,"\nM%06X05",modification[k]);
 				//get the address of the symbol that END points
 				hashindex = symfunction(curline->operand);
 				offset = symtab_search(tempsymtab[hashindex],curline->operand);
-				fprintf(lstfile,"\n");
-				fprintf(objfile,"\nE%6X",offset);
+				fprintf(objfile,"\nE%06X\n",offset);
 				
 				curline = curline->next;
 				continue;
@@ -245,6 +270,30 @@ void cmd_assemble(char* filename){
 
 			//initialize variables
 			obj12 = obj3 = obj4 = 0;
+			for(int i=0;i<3;i++)
+				memset(objstr[i],0,sizeof(objstr[i]));
+
+			//intialize new line
+			if(newlineFlag == TRUE){
+				if(strcmp(line,"")){
+					fprintf(objfile,"%02X%s\n",(int)(strlen(line))/2,line);
+					memset(line,0,sizeof(line));
+				}
+
+				if(!strcmp(line2,"")){
+					fprintf(objfile,"T%06X",curline->addr);
+				}
+				else{
+					fprintf(objfile,"T%06X",newlineadr);
+					strcpy(line,line2);
+					memset(line2,0,sizeof(line2));
+				}
+				colcount = 9 + colcount2;
+				colcount2 = 0;
+				newlineadr = -1;
+				newlineFlag = FALSE;
+			}
+			
 
 			//first 2 digits of object code
 			obj12 = hashSearch_opcode(curline->operation);
@@ -318,8 +367,14 @@ void cmd_assemble(char* filename){
 					}
 					else{
 						//if format4, direct addressing
-						if(curline->format == 4)
+						if(curline->format == 4){
+							modification[modfIdx++] = curline->addr + 1;
+							if(modfIdx == modfSize - 1){
+								modfSize *= 2;
+								modification = (int*)realloc(modification,sizeof(int)*modfSize);
+							}
 							obj4 = offset;
+						}
 						else{
 							//check for PC relative
 							pc = curline->next->addr;
@@ -346,45 +401,107 @@ void cmd_assemble(char* filename){
 				char *tempContent = extractContent(curline->operand);
 				if(curline->operand[0] == 'X'){
 					fprintf(lstfile,"%s\n",tempContent);
+					if(colcount + strlen(tempContent) <= MAX_TEXT_LINE){
+						colcount += strlen(tempContent);
+						strcat(line,tempContent);
+					}
+					else{
+						newlineFlag = TRUE;
+						colcount2 = strlen(tempContent);
+						newlineadr = curline->addr;
+						strcat(line2,tempContent);
+					}
 				}
 				//Character inserted
 				else if(curline->operand[0] == 'C'){
-					for(int i=0; i<strlen(tempContent); i++)
+					char convstr[10];
+					char tempstr[10];
+					for(int i=0; i<strlen(tempContent); i++){
 						fprintf(lstfile,"%2X",(int)(tempContent[i]));
+						sprintf(convstr,"%2X",(int)(tempContent[i]));
+						strcat(tempstr,convstr);
+					}
 					fprintf(lstfile,"\n");
+					if(colcount + strlen(tempstr) <= MAX_TEXT_LINE){
+						colcount += strlen(tempstr);
+						strcat(line,tempstr);
+					}
+					else{
+						newlineFlag = TRUE;
+						colcount2 = strlen(tempstr);
+						newlineadr = curline->addr;
+						strcat(line2,tempstr);
+					}
 				}
 				else
-					fprintf(lstfile,"What is this input? %s\n",curline->operand);
+					fprintf(lstfile,"%s\n",curline->operand);
 				curline = curline->next;
 				continue;
 			}//format3,4 if
 			else if(!strcmp(curline->operation, "WORD")){
 				//Character input
+				char tempstr[10];
 				int temp = StrToInt(curline->operand);
+				sprintf(tempstr,"%06X",temp);
 				fprintf(lstfile,"%06X\n",temp);
+
+				if(colcount + strlen(tempstr) <= MAX_TEXT_LINE){
+					colcount += strlen(tempstr);
+					strcat(line,tempstr);
+				}
+				else{
+					newlineFlag = TRUE;
+					colcount2 = strlen(tempstr);
+					newlineadr = curline->addr;
+					strcat(line2,tempstr);
+				}
+
 				curline = curline->next;
 				continue;
 			}
 
+			sprintf(objstr[0],"%02X",obj12);
+			
 			switch(curline->format){
 				case 1:
 					fprintf(lstfile,"%02X\n",obj12);
 					break;
 				case 2:
 					fprintf(lstfile,"%02X%02X\n",obj12,obj3);
+					sprintf(objstr[1],"%02X",obj3);
 					break;
 				case 3:
 					fprintf(lstfile,"%02X%01X%03X\n",obj12,obj3,obj4%(1<<12));
+					sprintf(objstr[1],"%01X",obj3);
+					sprintf(objstr[2],"%03X",obj4%(1<<12));
 					break;
 				case 4:
 					fprintf(lstfile,"%02X%01X%05X\n",obj12,obj3,obj4%(1<<20));
+					sprintf(objstr[1],"%01X",obj3);
+					sprintf(objstr[2],"%05X",obj4%(1<<20));
 					break;
 				default:
 					printf("OTHER!: %s\n",curline->operation);
 			}
 			
+			if(colcount + curline->format*2 <= MAX_TEXT_LINE){
+				colcount += curline->format*2;
+				for(int k=0;k<curline->format && k<3;k++)
+					strcat(line,objstr[k]);
+			}
+			else{
+				newlineFlag = TRUE;
+				colcount2 = curline->format*2;
+				newlineadr = curline->addr;
+				for(int k=0;k<curline->format && k<4;k++)
+					strcat(line2,objstr[k]);
+			}
+
 			curline = curline->next;
 		}//while
+
+		
+
 
 		fclose(lstfile);
 		fclose(objfile);
@@ -400,6 +517,9 @@ void cmd_assemble(char* filename){
 		free(symboltable);
 		symboltable = NULL;
 	}
+
+	printf("\noutput file: [%s], [%s]\n",fname1,fname2);
+
 	symboltable = tempsymtab;
 	newsymtable = FALSE;
 }

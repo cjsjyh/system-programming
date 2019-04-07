@@ -14,6 +14,7 @@
 #define MEM_SIZE 65536 * 16
 #define WORD 3
 #define BYTE 1
+#define MAX_TEXT_LINE 69
 
 #include "ds.h"
 
