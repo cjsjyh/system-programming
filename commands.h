@@ -8,7 +8,7 @@
 void cmd_dir();
 void cmd_help();
 void cmd_type(char*);
-void cmd_assemble(char*);
+int cmd_assemble(char*);
 void cmd_reset();
 int cmd_dump(int, int, int*);
 int cmd_edit(int, int);

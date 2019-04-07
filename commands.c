@@ -19,20 +19,21 @@ void cmd_type(char* filename){
 		printf("File doesn't exist!\n");
 		return;
 	}
+	//prints 1 line at a time until FILE ends
 	while(fgets(line,100,fp) != NULL)
 			printf("%s",line);
 	fclose(fp);
 	return;
 }
 
-void cmd_assemble(char* filename){
+int cmd_assemble(char* filename){
 	FILE *fp = fopen(filename, "r");
 	char line[200]={0,}, line2[200]={0,};
 	char label[30], operand[30], operand2[30], operation[30], *tempFormat;
 	char* tempContent, *fname, fname1[30], fname2[30];
 	int argCount, num, numCount, base, hashindex, totalLength;
 	int isFirst = TRUE, errorFlag = FALSE;
-	int opcode,format=-1, locctr=0,i=0;
+	int opcode,format=-1, locctr=0,linecount;
 	
 	intermptr intermediate=NULL;
 	intermptr newinterm;
@@ -41,13 +42,17 @@ void cmd_assemble(char* filename){
 	//PASS 1
 	if (fp == NULL){
 		printf("File doesn't exist!\n");
-		return;
+		return TRUE;
 	}
 	
 	tempsymtab = (symptr*)calloc(SYM_SIZE,sizeof(symptr)*SYM_SIZE);
 
+	linecount = 0;
 	//Get 1 line at a time from file until NULL
 	while(fgets(line,200,fp) != NULL && errorFlag == FALSE){
+		int i=0;
+		//count line for error
+		linecount++;
 		//empty line
 		if(!strcmp(line,"") || !strcmp(line,"\n"))
 			continue;
@@ -55,6 +60,7 @@ void cmd_assemble(char* filename){
 		i=0;
 		while(line[i] == ' ' || line[i] =='\t')
 			i++;
+		//if it's a comment line
 		if(line[i] == '.'){
 			newinterm = (intermptr)calloc(1,sizeof(interm));
 			strcpy(newinterm->line,line);
@@ -62,22 +68,28 @@ void cmd_assemble(char* filename){
 			interm_push(&intermediate,newinterm);
 			continue;
 		}
-
+		//seperates a line by label, directive and operands
 		argCount = asmSeparater(line,label,operation,operand,operand2);
 
+		//checks if the first line is START
 		if(isFirst){
+			//sets initial location counter with the operand
 			if(!strcmp(operation,"START"))
 				locctr = StrToHex(operand); 
+			//if start address wasn't given, set to 0
 			else
 				locctr = 0;
 			isFirst = FALSE;
 		}
 
+		//if there is a symbol
 		if(strcmp(label,"")){
+			//get the index in the symbol table
 			int index = symfunction(label);
-			if(symtab_push(&(tempsymtab[index]), label, locctr) == -1){
+			//insert into that index of symbol table
+			if(symtab_push(&(tempsymtab[index]), label, locctr) == TRUE){
+				printf("ERROR at line %d\n",linecount);
 				errorFlag = TRUE;
-				printf("%s already exists!\n",label);
 			}
 		}
 			
@@ -91,9 +103,15 @@ void cmd_assemble(char* filename){
 		//Handle format 4 exception
 		if(operation[0] == '+'){
 			format = 4;
+			//extract from index 1
 			tempFormat = hashSearch_format(&(operation[1]));
 			opcode = hashSearch_opcode(&(operation[1]));
 			strcpy(newinterm->operation,&(operation[1]));
+			if(tempFormat == NULL){
+				printf("ERROR at line %d\n",linecount);
+				errorFlag = TRUE;
+				continue;
+			}
 		}
 		else{
 			tempFormat = hashSearch_format(operation);
@@ -132,42 +150,41 @@ void cmd_assemble(char* filename){
 				locctr += num;
 			}
 			else if(!strcmp(operation, "BYTE")){
-				//Character input
+				//remove indicator X and C
 				tempContent = extractContent(operand);
+				//if the input is in Hexadecimal
 				if(operand[0] == 'X'){
 					num = (int)strlen(tempContent);
 					locctr += ceil((float)num/2);
 				}
+				//if the input is in Character
 				else if(operand[0] == 'C'){
-					//printf("[%X]BYTE operand %s\n",locctr,tempContent);
 					locctr += strlen(tempContent);
 				}
-				else
-					printf("What is this input? %s\n",operand);
+				//other than these 2, error
+				else{
+					printf("ERROR at line %d\n",linecount);
+					errorFlag = TRUE;
+				}
 			}
 			else if(!strcmp(operation, "WORD")){
 				num = StrToInt(operand);	
 				locctr += 3;
 			}
 			else if(!strcmp(operation,"END")){
-				//printf("[%X]END operand %d\n",locctr,num);
 				totalLength = locctr;
 			}
-			else if(!strcmp(operation,"BASE")){
-				//base = symtab_search(tempsymtab[hashindex],operand);
+			else if(compareString(operation,"START","BASE")){
+				opcode = 0;
 			}
 			//unknown directive
 			else{
-				//printf("!!ELSE!! %s\n",operation);
+				printf("ERROR at line %d\n",linecount);
+				errorFlag = TRUE;
 				continue;
 			}
 
 		}//else
-
-		if(errorFlag){
-			printf("Error while assembling!\n");
-			return;
-		}
 
 		//reset
 		format = -1;
@@ -178,11 +195,17 @@ void cmd_assemble(char* filename){
 
 	}//while
 	fclose(fp);
+
+	//stop if there was an error
+	if(errorFlag)
+		return TRUE;
+
 	//--------------------------------------------
 	//PASS 2
 	//--------------------------------------------
 	if (intermediate == NULL){
 		printf("No lines to assemble\n");
+		return TRUE;
 	}
 	else{
 		int offset, pc, hashindex, newlineadr;
@@ -196,7 +219,7 @@ void cmd_assemble(char* filename){
 		intermptr curline;
 		curline = intermediate;
 
-		//open lstfile file
+		//open list file and object file
 		fname = strtok(filename,".");
 		strcpy(fname1,fname);
 		strcpy(fname2,fname);
@@ -205,46 +228,64 @@ void cmd_assemble(char* filename){
 		lstfile = fopen(fname1,"w+");
 		objfile = fopen(fname2,"w+");
 
-		//Start Header record
-		fprintf(objfile,"H");
+		
 		//reset values;
 		colcount = 9;
 		colcount2 = 0;
 		newlineadr = -1;
 		memset(line,0,sizeof(line));
 
+		//if first line isn't Start
+		if(strcmp(curline->operation,"START"))
+			fprintf(objfile,"H      000000%06X\n",totalLength);
+
+		linecount = 0;
 		while(curline != NULL && errorFlag == FALSE){
 			char objstr[3][20];
+			linecount++;
 			//lines that don't produce opcodes
 			curline->line[strlen(curline->line)-1] = '\0';
+			//print line number
 			fprintf(lstfile,"%04d\t",linenum);
+			linenum +=5;
+			//if current line of intermediate file is a comment line
 			if(curline->addr == -1){
 				fprintf(lstfile,"\t%s\n",curline->line);
 				curline = curline->next;
 				continue;
 			}
 
-			fprintf(lstfile,"%04X\t",curline->addr);
+			//print location counter if it's not END
+			if(strcmp(curline->operation,"END"))
+				fprintf(lstfile,"%04X\t",curline->addr);
+			else
+				fprintf(lstfile,"    \t");
+			//print assembly code
 			fprintf(lstfile,"%-30s",curline->line);
-			linenum +=5;
+			
 
+			//if current line is RESW or RESB, start new line
 			if(compareString(curline->operation,"RESW","RESB")){
 				fprintf(lstfile,"\n");
 				newlineFlag = TRUE;
 				curline = curline->next;
 				continue;
 			}
+			//if current line is BASE, move to the next line
 			else if(!strcmp(curline->operation,"BASE")){
 				fprintf(lstfile,"\n");
 				curline = curline->next;
 				continue;
 			}
+			//if current line is START
 			else if(!strcmp(curline->operation,"START")){
 				fprintf(lstfile,"\n");
-
+				//Start Header record
+				fprintf(objfile,"H");
 				fprintf(objfile,"%-6s",curline->label);
 				fprintf(objfile,"%06X",curline->addr);
 				fprintf(objfile,"%06X\n",totalLength-curline->addr);
+				//start a new Text Record
 				fprintf(objfile,"T%06X",curline->addr);
 				curline = curline->next;
 				continue;
@@ -275,19 +316,22 @@ void cmd_assemble(char* filename){
 
 			//intialize new line
 			if(newlineFlag == TRUE){
+				//if there's anything in line
 				if(strcmp(line,"")){
 					fprintf(objfile,"%02X%s\n",(int)(strlen(line))/2,line);
 					memset(line,0,sizeof(line));
 				}
-
+				//line2 is empty
 				if(!strcmp(line2,"")){
 					fprintf(objfile,"T%06X",curline->addr);
 				}
+				//if line2 isn't empty
 				else{
 					fprintf(objfile,"T%06X",newlineadr);
 					strcpy(line,line2);
 					memset(line2,0,sizeof(line2));
 				}
+				//reset values for new line
 				colcount = 9 + colcount2;
 				colcount2 = 0;
 				newlineadr = -1;
@@ -298,7 +342,9 @@ void cmd_assemble(char* filename){
 			//first 2 digits of object code
 			obj12 = hashSearch_opcode(curline->operation);
 
+			//format 2
 			if(curline->format == 2){
+				//if command is SVC
 				if(!strcmp(curline->operand,"SVC")){
 					int temp = StrToHex(curline->operand);
 					obj3 = insertHexAt(obj3,temp,1);
@@ -307,13 +353,14 @@ void cmd_assemble(char* filename){
 					int temp = registerNum(curline->operand);
 					//if operand isn't a register
 					if(temp == -1){
-						
+						printf("ERROR at line %d\n",linecount);
 						errorFlag = TRUE;
 						continue;
 					}
 					obj3 = insertHexAt(obj3,temp,1);
 					//If second operand exists
 					if(curline->argCount < 0){
+						//if directive is SHIFTL or SHIFTR, 2nd operand is an integer
 						if(compareString(curline->operand2,"SHIFTL","SHIFTR")){
 							temp = StrToHex(curline->operand2);
 							obj3 = insertHexAt(obj3,temp,0);
@@ -322,7 +369,7 @@ void cmd_assemble(char* filename){
 							temp = registerNum(curline->operand2);
 							//if operand isn't a register
 							if(temp == -1){
-								
+								printf("ERROR at line %d\n",linecount);
 								errorFlag = TRUE;
 								continue;
 							}
@@ -360,7 +407,7 @@ void cmd_assemble(char* filename){
 						if (temp != -1)
 							obj4 += temp;
 						else{
-							printf("%s error here\n",strcontent);
+							printf("ERROR at line %d\n",linecount);
 							errorFlag = TRUE;
 							continue;
 						}
@@ -405,11 +452,14 @@ void cmd_assemble(char* filename){
 				//Extract content, removing C and X
 				char *tempContent = extractContent(curline->operand);
 				if(curline->operand[0] == 'X'){
+					//write content to file
 					fprintf(lstfile,"%s\n",tempContent);
+					//if this line can fit into the current line of object file
 					if(colcount + strlen(tempContent) <= MAX_TEXT_LINE){
 						colcount += strlen(tempContent);
 						strcat(line,tempContent);
 					}
+					//if this line needs to be on the next line of object file
 					else{
 						newlineFlag = TRUE;
 						colcount2 = strlen(tempContent);
@@ -421,16 +471,19 @@ void cmd_assemble(char* filename){
 				else if(curline->operand[0] == 'C'){
 					char convstr[10];
 					char tempstr[10];
+					//convert each character to corresponding ASCII in hex and write to file
 					for(int i=0; i<strlen(tempContent); i++){
 						fprintf(lstfile,"%2X",(int)(tempContent[i]));
 						sprintf(convstr,"%2X",(int)(tempContent[i]));
 						strcat(tempstr,convstr);
 					}
 					fprintf(lstfile,"\n");
+					//if this line can fit into the current line of object file
 					if(colcount + strlen(tempstr) <= MAX_TEXT_LINE){
 						colcount += strlen(tempstr);
 						strcat(line,tempstr);
 					}
+					//if this line needs to be on the next line of object file
 					else{
 						newlineFlag = TRUE;
 						colcount2 = strlen(tempstr);
@@ -444,56 +497,58 @@ void cmd_assemble(char* filename){
 				continue;
 			}//format3,4 if
 			else if(!strcmp(curline->operation, "WORD")){
-				//Character input
 				char tempstr[10];
 				int temp = StrToInt(curline->operand);
 				sprintf(tempstr,"%06X",temp);
 				fprintf(lstfile,"%06X\n",temp);
-
+				//if this line can fit into the current line of object file
 				if(colcount + strlen(tempstr) <= MAX_TEXT_LINE){
 					colcount += strlen(tempstr);
 					strcat(line,tempstr);
 				}
+				//if this line needs to be on the next line of object file
 				else{
 					newlineFlag = TRUE;
 					colcount2 = strlen(tempstr);
 					newlineadr = curline->addr;
 					strcat(line2,tempstr);
 				}
-
 				curline = curline->next;
 				continue;
 			}
-
+			//make first 2 Hexadecimal
 			sprintf(objstr[0],"%02X",obj12);
-			
+			//make the rest of object codes
 			switch(curline->format){
+				//format 1
 				case 1:
 					fprintf(lstfile,"%02X\n",obj12);
 					break;
+				//format 2
 				case 2:
 					fprintf(lstfile,"%02X%02X\n",obj12,obj3);
 					sprintf(objstr[1],"%02X",obj3);
 					break;
+				//format 3
 				case 3:
 					fprintf(lstfile,"%02X%01X%03X\n",obj12,obj3,obj4%(1<<12));
 					sprintf(objstr[1],"%01X",obj3);
 					sprintf(objstr[2],"%03X",obj4%(1<<12));
 					break;
+				//format 4
 				case 4:
 					fprintf(lstfile,"%02X%01X%05X\n",obj12,obj3,obj4%(1<<20));
 					sprintf(objstr[1],"%01X",obj3);
 					sprintf(objstr[2],"%05X",obj4%(1<<20));
 					break;
-				default:
-					printf("OTHER!: %s\n",curline->operation);
 			}
-			
+			//if this line can fit into the current line of object file
 			if(colcount + curline->format*2 <= MAX_TEXT_LINE){
 				colcount += curline->format*2;
 				for(int k=0;k<curline->format && k<3;k++)
 					strcat(line,objstr[k]);
 			}
+			//if this line needs to be on the next line of object file
 			else{
 				newlineFlag = TRUE;
 				colcount2 = curline->format*2;
@@ -504,16 +559,14 @@ void cmd_assemble(char* filename){
 
 			curline = curline->next;
 		}//while
-
-		
-
-
 		fclose(lstfile);
 		fclose(objfile);
 	}//else
 
 	if(errorFlag){
-		printf("ERROR!!\n");
+		remove(fname1);
+		remove(fname2);
+		return TRUE;
 	}
 	//if symbol table is alreay set, clear
 	if(!newsymtable){
@@ -525,8 +578,11 @@ void cmd_assemble(char* filename){
 
 	printf("\noutput file: [%s], [%s]\n",fname1,fname2);
 
+	//successfully assembled. Set global symbol table to current file's symbol table
 	symboltable = tempsymtab;
 	newsymtable = FALSE;
+
+	return FALSE;
 }
 
 //Prints files in current directory

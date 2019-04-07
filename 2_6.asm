@@ -1,6 +1,6 @@
 COPY    START   1000
+        +LDB     #LENGTH
 FIRST   STL     RETADR
-        LDB     #RDREC
 CLOOP   JSUB    RDREC
         LDA     LENGTH
         COMP    ZERO
@@ -43,4 +43,4 @@ WLOOP   TD      OUTPUT
         JLT     WLOOP
         RSUB
 OUTPUT  BYTE    X'05'
-END     FIRST
+        END     FIRST

@@ -94,13 +94,15 @@ int main()
 		else if(compareString(command,"symbol",NULL) && argCount == 1){
 			if(!newsymtable)
 				symtab_printAll();
-			else 
+			else {
 				printf("Not assembled yet!\n");
+				isPushed = TRUE;
+			}
+				
 		}
 
 		else if(compareString(command,"assemble",NULL) && argCount == 2){
-			cmd_assemble(bfr[1]);
-			isPushed = FALSE;
+			isPushed = cmd_assemble(bfr[1]);
 		}
 
 		else if (compareString(command, "d", "dir") && argCount == 1){
