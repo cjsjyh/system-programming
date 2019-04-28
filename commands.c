@@ -39,6 +39,12 @@ int cmd_assemble(char* filename){
 	intermptr newinterm;
 	symptr* tempsymtab; 
 
+	//FILE *fp = fopen(bfr[1],"r");
+	if(fp == NULL){
+		printf("File doesn't exist!\n\n");
+		return TRUE;
+	}
+
 	//PASS 1
 	tempsymtab = (symptr*)calloc(SYM_SIZE,sizeof(symptr)*SYM_SIZE);
 
@@ -391,9 +397,10 @@ int cmd_assemble(char* filename){
 					else
 						strcpy(strcontent,curline->operand);
 
-					//Check if operation is LDB and set base variable
 					hashindex = symfunction(strcontent);
 					offset = symtab_search(tempsymtab[hashindex],strcontent);
+					
+					//Check if operation is LDB and set base variable
 					if(!strcmp(curline->operation,"LDB"))
 						base = offset;
 					//operand doesn't exist in the symbol table

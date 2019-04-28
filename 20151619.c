@@ -9,7 +9,7 @@
 int main()
 {
 	int isPushed = FALSE, opcode;
-	int argCount=0, bfrCount=0, comCount=0;
+	int argCount=0, bfrCount=0, comCount=0, realComCount=0;
 	char command[30],fullCmd[200];
 	char bfr[7][30];
 	unsigned int arg1,arg2,arg3;
@@ -18,6 +18,7 @@ int main()
 	//Initialization
 	lptr history = NULL;
 	newsymtable = TRUE;
+	progaddr = 0;
 
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
 	for (int i=0; i<HASH_SIZE; i++)		
@@ -52,7 +53,11 @@ int main()
 				strcpy(bfr[i-1],bfr[i]);
 			comCount++;
 		}
-
+		for(int i=0; i<7; i++){
+			for(int j=0;j<strlen(bfr[i]);j++)
+				if(bfr[i][j] == ',')
+					realComCount++;
+		}
 
 		if (compareString(command, "opcode", NULL) && bfrCount == 2) {
 			//correct format for OPCODE [instruction] inserted
@@ -68,6 +73,7 @@ int main()
 			continue;
 		}
 		
+		//
 		if (argCount != bfrCount - comCount) {
 			//cases such as dump 4, hello
 			cmaFlag = FALSE;
@@ -78,7 +84,6 @@ int main()
 			cmaFlag = FALSE;
 			isPushed = TRUE;
 		}
-
 
 
 		if (compareString(command, "h", "help") && argCount == 1){
@@ -101,28 +106,6 @@ int main()
 				
 		}
 
-		else if(compareString(command,"assemble",NULL) && argCount == 2){
-			FILE *fp = fopen(bfr[1],"r");
-			if(fp == NULL){
-				printf("File doesn't exist!\n\n");
-				continue;
-			}
-			isPushed = cmd_assemble(bfr[1]);
-		}
-
-		else if (compareString(command, "d", "dir") && argCount == 1){
-			cmd_dir();
-			isPushed = FALSE;
-		}
-
-		else if (compareString(command, "q", "quit") && argCount == 1)
-			break;
-
-		else if (compareString(command, "hi", "history") && argCount == 1) {
-			linkedlist_push(&history, fullCmd);
-			linkedlist_print(history);
-			isPushed = TRUE;
-		}
 		//Maximum number of input is 3
 		else if (compareString(command, "du", "dump") && argCount <= 3 && cmaFlag) {
 			switch (argCount) {
@@ -168,6 +151,36 @@ int main()
 			else
 				printf("Invalid command!\n");
 		}
+
+		else if (compareString(command, "loader", NULL) && inRange(2,4,bfrCount) && realComCount == 0){
+			printf("Loading %s %s %s\n",bfr[1],bfr[2],bfr[3]);
+		}
+
+		else if(compareString(command,"assemble",NULL) && argCount == 2){
+			isPushed = cmd_assemble(bfr[1]);
+		}
+
+		else if (compareString(command, "d", "dir") && argCount == 1){
+			cmd_dir();
+			isPushed = FALSE;
+		}
+
+		else if (compareString(command, "q", "quit") && argCount == 1){
+			break;
+		}
+
+		else if (compareString(command,"progaddr",NULL) && argCount == 2 && cmaFlag){
+			progaddr = arg1;
+			printf("Progaddr set to %X\n",progaddr);
+			isPushed = FALSE;
+		}
+
+		else if (compareString(command, "hi", "history") && argCount == 1) {
+			linkedlist_push(&history, fullCmd);
+			linkedlist_print(history);
+			isPushed = TRUE;
+		}
+
 		else if (compareString(command, "reset", NULL) && argCount == 1){
 			cmd_reset();
 			isPushed = FALSE;
@@ -192,7 +205,7 @@ int main()
 		//RESET
 		for(int i=0; i<7; i++)
 				memset(bfr[i],0,sizeof(bfr[i]));
-		argCount = bfrCount = comCount = 0;
+		argCount = bfrCount = comCount = realComCount = 0;
 		arg1 = arg2 = arg3 = INT_MIN;
 		cmaFlag = TRUE;
 		printf("\n");

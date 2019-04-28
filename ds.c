@@ -181,7 +181,11 @@ void symtab_print(symtab *head){
 }
 
 int symfunction(char* str){
-	return (int)str[0] - (int)'A';
+	int index = (int)str[0] - (int)'A';
+	if(index < 0)
+		return 0;
+	else
+		return index;
 }
 
 void interm_push(intermptr *head,intermptr newNode){

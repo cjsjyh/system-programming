@@ -22,6 +22,7 @@ unsigned char *memory;
 hashlist **optable;
 symptr *symboltable;
 int newsymtable;
+int progaddr;
 
 #endif
 
