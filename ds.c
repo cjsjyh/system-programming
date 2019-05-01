@@ -22,7 +22,7 @@ void extsymtab_push(extsymtab** head, char* symbol, int addr, int length){
 	}
 }
 
-extsymtab* extsymtab_search(extsymtab* head, char* symbol){
+extsymptr extsymtab_search(extsymtab* head, char* symbol){
 	if (head == NULL)
 		return NULL;
 	else{

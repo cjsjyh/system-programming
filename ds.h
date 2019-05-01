@@ -66,8 +66,8 @@ typedef struct extsymtab {
 	int length;
 	extsymptr next;
 }extsymtab;
-void extsymtab_push(extsymtab**,char*, int, int);
-extsymtab* extsymtab_search(extsymtab*,char*);
+void extsymtab_push(extsymtab** head, char* symbol, int addr, int length);
+extsymptr extsymtab_search(extsymtab* head, char* symbol);
 void extsymtab_printAll(extsymtab*);
 
 #endif

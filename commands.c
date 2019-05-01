@@ -33,9 +33,46 @@ int cmd_loader(char **file, int fileCount){
 	}
 	
 	// INITIALIZATION
+	memset(temp, 0, sizeof temp);
 	pstartAddr = progaddr;
 	plength = 0;
 
+	//PASS1 : build external symbol table
+	for(int filenum=0;filenum < fileCount; filenum++){
+		extsymptr searchResult;
+		fp = fopen(file[filenum],"r");
+		
+		while(fgets(line,sizeof(line),fp)){
+			if(line[0] == 'H'){
+				extractStr(temp,line,1,6);
+				pstartAddr += extractStrToHex(line,7,6) + plength;
+				plength = extractStrToHex(line,13,6);
+				extsymtab_push(&head,temp,pstartAddr,plength);
+			}
+			else if(line[0] == 'D'){
+				int symvalue;
+				for(int i=0;;i++){
+					extractStr(temp,line,1+i*6*2,6);
+					symvalue = extractStrToHex(line,7+i*6*2,6);
+
+					//finished processing D record
+					if(temp[0] == 0 || temp[0] == '\n')
+						break;
+					
+					if((searchResult = extsymtab_search(head,temp)) != NULL){
+						printf("Same Symbol %s Defined Twice!\n",temp);
+						return TRUE;
+					}
+					else
+						extsymtab_push(&head, temp, symvalue+pstartAddr, -1);
+				}//for
+			}//else if
+			memset(temp, 0, sizeof temp);
+		}//while
+	}//for
+	
+	
+	//PASS2 : load to memory
 	for(int filenum=0;filenum < fileCount; filenum++){
 		printf("--FILE NAME: %s--\n",file[filenum]);
 		
@@ -53,12 +90,6 @@ int cmd_loader(char **file, int fileCount){
 				continue;
 			}
 
-			if(line[0] == 'H'){
-				extractStr(temp,line,1,6);
-				pstartAddr += extractStrToHex(line,7,6) + plength;
-				plength = extractStrToHex(line,13,6);
-				extsymtab_push(&head,temp,pstartAddr,plength);
-			}
 			else if(line[0] == 'T'){
 				int textAddr,textLen;
 				//address for text record to be loaded
@@ -73,32 +104,28 @@ int cmd_loader(char **file, int fileCount){
 				for(int j=0;j<textLen;j++){
 					memory[textAddr+j] = extractStrToHex(line,j*2+9,2);
 				}
-			}
+			}//T record
 			else if(line[0] == 'D'){
 				
-			}
+				extractStr(temp, line, 1, 6);
+
+			}//D record
 			else if(line[0] == 'M'){
 
-			}
+			}//M record
 			else if(line[0] == 'E'){
 
-			}
+			}//E record
 			else{
 
-			}
-		}
+			}//else
+		}//while
 		
 		
-	}
+	}//for
 	
 
 
-	
-	
-
-
-
-	
 	extsymtab_printAll(head);
 	//print total length!!
 	printf("------------------------------------------------------\n");
