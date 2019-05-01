@@ -58,4 +58,16 @@ int symtab_search(symtab*,char*);
 
 void interm_push(intermptr*, intermptr);
 
+//if it's a control section, legnth is positive integer. otherwise negative
+typedef struct extsymtab* extsymptr;
+typedef struct extsymtab {
+	char label[30];
+	int addr;
+	int length;
+	extsymptr next;
+}extsymtab;
+void extsymtab_push(extsymtab**,char*, int, int);
+extsymtab* extsymtab_search(extsymtab*,char*);
+void extsymtab_printAll(extsymtab*);
+
 #endif

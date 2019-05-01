@@ -16,5 +16,7 @@ int inRange(int,int,int);
 int HexBitCount(int);
 int insertHexAt(int,int,int);
 int registerNum(char*);
+void extractStr(char* dest, char* source, int start, int len);
+int extractStrToHex(char* source, int start, int len);
 
 #endif

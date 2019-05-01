@@ -153,7 +153,13 @@ int main()
 		}
 
 		else if (compareString(command, "loader", NULL) && inRange(2,4,bfrCount) && realComCount == 0){
-			printf("Loading %s %s %s\n",bfr[1],bfr[2],bfr[3]);
+			char **filenames = (char**)malloc(sizeof(char*)*3);
+			for(int j=0;j<3;j++){
+				filenames[j] = (char*)malloc(sizeof(char)*30);
+				strcpy(filenames[j],bfr[j+1]);
+			}
+			
+			cmd_loader(filenames,bfrCount-1);
 		}
 
 		else if(compareString(command,"assemble",NULL) && argCount == 2){

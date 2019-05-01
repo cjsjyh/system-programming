@@ -9,7 +9,100 @@ void cmd_help() {
 	printf("h[elp]\nd[ir]\nq[uit]\nhi[story]\ndu[mp] [start,end]\n");
 	printf("e[dit] address, value\nf[ill] start, end, value\nreset\n");
 	printf("opcode mnemonic\nopcodelist\nassemble filename\ntype filename\nsymbol\n");
+	printf("progaddr [address]\nloader [filename1] [filename2] [filename3]\nrun\nbp [address|clear]\n");
 	return;
+}
+
+//char *strncpy(char *dest, const char *src, size_t n)
+
+int cmd_loader(char **file, int fileCount){
+	extsymtab *head=NULL;
+	char line[300]={0,};
+	char temp[200]={0,};
+	FILE *fp;
+	int pstartAddr=0,plength=0;
+
+	//check if invalid file name is included
+	for(int i=0; i<fileCount; i++){
+		fp = fopen(file[i],"r");
+		if(fp == NULL){
+			printf("invalid file name!\n");
+			return TRUE;
+		}
+		fclose(fp);
+	}
+	
+	// INITIALIZATION
+	pstartAddr = progaddr;
+	plength = 0;
+
+	for(int filenum=0;filenum < fileCount; filenum++){
+		printf("--FILE NAME: %s--\n",file[filenum]);
+		
+		fp = fopen(file[filenum],"r");
+		
+		while(fgets(line,sizeof(line),fp)){
+			int i=0;
+			printf("%s",line);
+
+			//find first non-space character
+			while(line[i] == ' ' && i<300)
+				i++;
+			//comment line
+			if(line[i] == '.'){
+				continue;
+			}
+
+			if(line[0] == 'H'){
+				extractStr(temp,line,1,6);
+				pstartAddr += extractStrToHex(line,7,6) + plength;
+				plength = extractStrToHex(line,13,6);
+				extsymtab_push(&head,temp,pstartAddr,plength);
+			}
+			else if(line[0] == 'T'){
+				int textAddr,textLen;
+				//address for text record to be loaded
+				textAddr = extractStrToHex(line,1,6) + pstartAddr;
+				
+				//length of text record
+				textLen = extractStrToHex(line,7,2);
+
+				printf("textLEN: %X\n",textLen);
+				printf("FROM %X to %X\n",textAddr, textAddr + textLen);
+
+				for(int j=0;j<textLen;j++){
+					memory[textAddr+j] = extractStrToHex(line,j*2+9,2);
+				}
+			}
+			else if(line[0] == 'D'){
+				
+			}
+			else if(line[0] == 'M'){
+
+			}
+			else if(line[0] == 'E'){
+
+			}
+			else{
+
+			}
+		}
+		
+		
+	}
+	
+
+
+	
+	
+
+
+
+	
+	extsymtab_printAll(head);
+	//print total length!!
+	printf("------------------------------------------------------\n");
+	printf("\t\t\t\ttotal length\t%04X\n",0x0133);
 }
 
 void cmd_type(char* filename){

@@ -7,6 +7,7 @@
 
 void cmd_dir();
 void cmd_help();
+int cmd_loader(char**,int);
 void cmd_type(char*);
 int cmd_assemble(char*);
 void cmd_reset();

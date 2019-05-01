@@ -177,3 +177,15 @@ int registerNum(char* reg){
 	else
 		return -1;
 }
+
+void extractStr(char* dest, char* source, int start, int len){
+	strncpy(dest,&(source[start]),len);
+	dest[len] = '\0';
+}
+
+int extractStrToHex(char* source, int start, int len){
+	char dest[300];
+	strncpy(dest,&(source[start]),len);
+	dest[len] = '\0';
+	return StrToHex(dest);
+}

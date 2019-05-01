@@ -4,6 +4,54 @@
 #include <string.h>
 #include <stdlib.h>
 
+void extsymtab_push(extsymtab** head, char* symbol, int addr, int length){
+	extsymtab* temp;
+	extsymtab* newNode = (extsymtab*)malloc(sizeof(extsymtab));
+	strcpy(newNode->label,symbol);
+	newNode->addr = addr;
+	newNode->length = length;
+	newNode->next = NULL;
+
+	if(*head == NULL)
+		*head = newNode;
+	else{
+		temp = *head;
+		while(temp->next != NULL)
+			temp = temp->next;
+		temp->next = newNode;
+	}
+}
+
+extsymtab* extsymtab_search(extsymtab* head, char* symbol){
+	if (head == NULL)
+		return NULL;
+	else{
+		while(head != NULL){
+			if (!strcmp(head->label,symbol))
+				return head;
+			head = head->next;
+		}
+	}
+	return NULL;
+}
+
+void extsymtab_printAll(extsymtab* head){
+	printf("control 	symbol		address 	length\nsection 	name\n");
+	printf("------------------------------------------------------\n");
+	while(head != NULL){
+		if(head->length < 0){
+			printf("\t\t%-7s\t\t",head->label);
+			printf("%04X\n",head->addr);
+		}
+		else{
+			printf("%-7s\t\t\t\t",head->label);
+			printf("%04X\t\t",head->addr);
+			printf("%04X\n",head->length);
+		}
+		head = head -> next;
+	}
+}
+
 //appends new node with command to the end of head linked list
 void linkedlist_push(lptr* head,char* command){
 	lptr temp = *head;
