@@ -181,11 +181,60 @@ int registerNum(char* reg){
 void extractStr(char* dest, char* source, int start, int len){
 	strncpy(dest,&(source[start]),len);
 	dest[len] = '\0';
+	for(int i=0;i<len;i++)
+		if (dest[i] == '\n' || dest[i] == ' ')
+			dest[i] = '\0';
 }
 
 int extractStrToHex(char* source, int start, int len){
 	char dest[300];
 	strncpy(dest,&(source[start]),len);
 	dest[len] = '\0';
+	for(int i=0;i<len;i++)
+		if (dest[i] == '\n' || dest[i] == ' ')
+			dest[i] = '\0';
 	return StrToHex(dest);
+}
+
+void charArrHexCal(unsigned char* arr, int value, int len, char operation){
+	int converted = 0;
+	int multiplier = 1;
+	int temp, rem = 0;
+	int repeat = ceil((float)len / 2.0);
+	unsigned int result;
+
+	for(int i = repeat-1; i>=0; i--){
+		temp = arr[i];
+
+		//last 4 bit
+		converted += (temp % 16)*multiplier;
+		temp /= 16;
+		multiplier *= 16;
+
+		if(len % 2 != 0 && i == 0){
+			rem = temp * 16;
+			continue;
+		}		
+
+		//first 4 bit
+		converted += (temp % 16)*multiplier;
+		temp /= 16;
+		multiplier *= 16;
+	}
+
+	if(operation == '+')
+		converted += value;
+	else
+		converted -= value;
+	printf("conv: %X\n",converted);
+
+	result = (unsigned int)converted;
+	printf("result: %X\n",result);
+
+	for(int i=repeat-1; i>=0; i--){
+		arr[i] = result & 255;
+		result /= 256;
+		printf("result: %X\n",result);
+	}
+	arr[0] +=rem;
 }

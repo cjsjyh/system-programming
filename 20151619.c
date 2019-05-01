@@ -20,6 +20,8 @@ int main()
 	newsymtable = TRUE;
 	progaddr = 0;
 
+	printf("%X\n",StrToHex("FFFF"));
+
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
 	for (int i=0; i<HASH_SIZE; i++)		
 		optable[i] = NULL;

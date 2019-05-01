@@ -21,6 +21,7 @@ int cmd_loader(char **file, int fileCount){
 	char temp[200]={0,};
 	FILE *fp;
 	int pstartAddr=0,plength=0;
+	int testttt=0;
 
 	//check if invalid file name is included
 	for(int i=0; i<fileCount; i++){
@@ -39,7 +40,6 @@ int cmd_loader(char **file, int fileCount){
 
 	//PASS1 : build external symbol table
 	for(int filenum=0;filenum < fileCount; filenum++){
-		extsymptr searchResult;
 		fp = fopen(file[filenum],"r");
 		
 		while(fgets(line,sizeof(line),fp)){
@@ -53,77 +53,108 @@ int cmd_loader(char **file, int fileCount){
 				int symvalue;
 				for(int i=0;;i++){
 					extractStr(temp,line,1+i*6*2,6);
+					printf("Pushing [%s]\n",temp);
 					symvalue = extractStrToHex(line,7+i*6*2,6);
 
 					//finished processing D record
 					if(temp[0] == 0 || temp[0] == '\n')
 						break;
 					
-					if((searchResult = extsymtab_search(head,temp)) != NULL){
+					if(extsymtab_search(head,temp) != NULL){
 						printf("Same Symbol %s Defined Twice!\n",temp);
 						return TRUE;
 					}
-					else
+					else{
+						printf("pushing %s\n",temp);
 						extsymtab_push(&head, temp, symvalue+pstartAddr, -1);
+					}
 				}//for
 			}//else if
 			memset(temp, 0, sizeof temp);
+			memset(line, 0, sizeof line);
 		}//while
 	}//for
 	
+	extsymtab_printAll(head);
 	
 	//PASS2 : load to memory
 	for(int filenum=0;filenum < fileCount; filenum++){
-		printf("--FILE NAME: %s--\n",file[filenum]);
-		
+		printf("Processing file %d\n",filenum);
+		int refNum[50]={0,};
+		extsymptr searchResult;
+
 		fp = fopen(file[filenum],"r");
-		
 		while(fgets(line,sizeof(line),fp)){
-			int i=0;
-			printf("%s",line);
-
-			//find first non-space character
-			while(line[i] == ' ' && i<300)
-				i++;
-			//comment line
-			if(line[i] == '.'){
-				continue;
-			}
-
-			else if(line[0] == 'T'){
+			
+			if(line[0] == 'T'){
 				int textAddr,textLen;
 				//address for text record to be loaded
 				textAddr = extractStrToHex(line,1,6) + pstartAddr;
-				
 				//length of text record
 				textLen = extractStrToHex(line,7,2);
-
-				printf("textLEN: %X\n",textLen);
-				printf("FROM %X to %X\n",textAddr, textAddr + textLen);
-
-				for(int j=0;j<textLen;j++){
+				for(int j=0;j<textLen;j++)
 					memory[textAddr+j] = extractStrToHex(line,j*2+9,2);
-				}
 			}//T record
-			else if(line[0] == 'D'){
-				
-				extractStr(temp, line, 1, 6);
+			
+			else if(line[0] == 'R'){
+				for(int i=0;;i++){
+					//set external symbols to their reference number
+					int refIndex = extractStrToHex(line,1+8*i,2);
+					extractStr(temp, line, 3+8*i, 6);
+					searchResult = extsymtab_search(head,temp);
 
-			}//D record
+					if(temp[0] == 0 || temp[0] == '\n')
+						break;
+
+					if (searchResult == NULL){
+						printf("index %d ~ %d\n",3+8*i,3+8*i+5);
+						printf("Symbol%sreferenced without Definition\n",temp);
+						return TRUE;
+					}
+					refNum[refIndex] = searchResult->addr;
+				}
+			}//R record
+			
+			else if(line[0] == 'H'){
+				//save prog name at the first index of reference Number
+				extractStr(temp,line,1,6);
+				searchResult = extsymtab_search(head,temp);
+				refNum[1] = searchResult -> addr;
+				//set current program's start address
+				pstartAddr = searchResult -> addr;
+			}
+			
 			else if(line[0] == 'M'){
+				int FixAddr = extractStrToHex(line,1,6) + pstartAddr;
+				int FixLen = extractStrToHex(line,7,2);
+				int FixRefIndex = extractStrToHex(line,10,2);
+				
+				printf("[%X]",refNum[FixRefIndex]);
+				printf("\n");
 
+				printf("[%X]%s",FixAddr,line);
+				for(int k=0;k<(FixLen+1)/2;k++)
+					printf("%02X",memory[FixAddr+k]);
+				printf(" BEFORE\n");
+				charArrHexCal(&(memory[FixAddr]),refNum[FixRefIndex],FixLen,line[9]);
+				for(int k=0;k<(FixLen+1)/2;k++)
+					printf("%02X",memory[FixAddr+k]);
+				printf(" AFTER\n\n");
+				testttt++;
 			}//M record
+			
 			else if(line[0] == 'E'){
-
+				break;
 			}//E record
-			else{
 
-			}//else
+			memset(temp, 0, sizeof temp);
+			memset(line, 0, sizeof line);
 		}//while
 		
 		
 	}//for
 	
+	printf("TESTT:%d\n",testttt);
 
 
 	extsymtab_printAll(head);
