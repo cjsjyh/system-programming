@@ -19,5 +19,8 @@ int registerNum(char*);
 void extractStr(char* dest, char* source, int start, int len);
 int extractStrToHex(char* source, int start, int len);
 void charArrHexCal(unsigned char* arr, int value, int len, char operation);
+int isFormat4(int addr);
+int bitToHex(int addr,int start,int end);
+int bitAddressMode(int addr);
 
 #endif

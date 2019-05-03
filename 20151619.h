@@ -21,8 +21,10 @@
 unsigned char *memory;
 hashlist **optable;
 symptr *symboltable;
+bpptr breakpoints;
 int newsymtable;
 int progaddr;
+int A,X,L,PC,B,S,T,SW;
 
 #endif
 

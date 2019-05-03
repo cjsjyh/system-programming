@@ -21,7 +21,7 @@ int cmd_loader(char **file, int fileCount){
 	char temp[200]={0,};
 	FILE *fp;
 	int pstartAddr=0,plength=0;
-	int testttt=0;
+
 
 	//check if invalid file name is included
 	for(int i=0; i<fileCount; i++){
@@ -53,7 +53,6 @@ int cmd_loader(char **file, int fileCount){
 				int symvalue;
 				for(int i=0;;i++){
 					extractStr(temp,line,1+i*6*2,6);
-					printf("Pushing [%s]\n",temp);
 					symvalue = extractStrToHex(line,7+i*6*2,6);
 
 					//finished processing D record
@@ -65,7 +64,6 @@ int cmd_loader(char **file, int fileCount){
 						return TRUE;
 					}
 					else{
-						printf("pushing %s\n",temp);
 						extsymtab_push(&head, temp, symvalue+pstartAddr, -1);
 					}
 				}//for
@@ -79,7 +77,6 @@ int cmd_loader(char **file, int fileCount){
 	
 	//PASS2 : load to memory
 	for(int filenum=0;filenum < fileCount; filenum++){
-		printf("Processing file %d\n",filenum);
 		int refNum[50]={0,};
 		extsymptr searchResult;
 
@@ -107,8 +104,7 @@ int cmd_loader(char **file, int fileCount){
 						break;
 
 					if (searchResult == NULL){
-						printf("index %d ~ %d\n",3+8*i,3+8*i+5);
-						printf("Symbol%sreferenced without Definition\n",temp);
+						printf("Symbol %s referenced without Definition\n",temp);
 						return TRUE;
 					}
 					refNum[refIndex] = searchResult->addr;
@@ -129,18 +125,7 @@ int cmd_loader(char **file, int fileCount){
 				int FixLen = extractStrToHex(line,7,2);
 				int FixRefIndex = extractStrToHex(line,10,2);
 				
-				printf("[%X]",refNum[FixRefIndex]);
-				printf("\n");
-
-				printf("[%X]%s",FixAddr,line);
-				for(int k=0;k<(FixLen+1)/2;k++)
-					printf("%02X",memory[FixAddr+k]);
-				printf(" BEFORE\n");
 				charArrHexCal(&(memory[FixAddr]),refNum[FixRefIndex],FixLen,line[9]);
-				for(int k=0;k<(FixLen+1)/2;k++)
-					printf("%02X",memory[FixAddr+k]);
-				printf(" AFTER\n\n");
-				testttt++;
 			}//M record
 			
 			else if(line[0] == 'E'){
@@ -153,14 +138,12 @@ int cmd_loader(char **file, int fileCount){
 		
 		
 	}//for
-	
-	printf("TESTT:%d\n",testttt);
 
 
 	extsymtab_printAll(head);
 	//print total length!!
 	printf("------------------------------------------------------\n");
-	printf("\t\t\t\ttotal length\t%04X\n",0x0133);
+	printf("\t\t\t\ttotal length\t%04X\n",0xFFFFFFF);
 }
 
 void cmd_type(char* filename){
@@ -944,4 +927,92 @@ int addressingMode(char* str){
 		return 2;
 	else
 		return 3;
+}
+
+int run_opcodes(int addr){
+	int mode, format, disp;
+	int opcode = extractStrToHex(&(memory[addr]),0,2);
+	opcode -= opcode % 4;
+	//format 2
+	switch(opcode){
+		//COMPR FORMAT 2
+		case 0xA0:
+			break;
+		//CLEAR FORMAT 2
+		case 0xB4:
+			break;
+		//TIXR FORMAT2
+		case 0xB8:
+			break;
+		
+		return 2;
+	}
+
+	mode = bitAddressMode(addr);
+	format = bitFormat4(addr);
+
+	if(format){
+		//format 4
+		disp = bitToHex(addr,12,31);
+	}
+	else{
+		//format 3
+		disp = bitToHex(addr,12,23);
+	}
+
+	switch(opcode){
+		//LDA
+		case 0x00:
+			break;
+		//LDB
+		case 0x68:
+			break;
+		//LDT
+		case 0x74:
+			break;
+		//LDCH
+		case 0x50:
+			break;
+		//STA
+		case 0x0C:
+			break;
+		//STX
+		case 0x10:
+			break;
+		//STL
+		case 0x14:
+			break;
+		//STCH
+		case 0x54:
+			break;
+		//J
+		case 0x3C:
+			break;
+		//JSUB
+		case 0x48:
+			break;
+		//JLT
+		case 0x38:
+			break;
+		//JEQ
+		case 0x30:
+			break;
+		//RSUB
+		case 0x4C:
+			break;
+		//COMP
+		case 0x28:
+			break;
+		//TD
+		case 0xE0:
+			break;
+		//RD
+		case 0xD8:
+			break;
+		//WD
+		case 0xDC:
+			break;
+	}
+
+	return format;
 }

@@ -15,12 +15,19 @@ int main()
 	unsigned int arg1,arg2,arg3;
 	int nextAdr = 0,cmaFlag=1;
 
+	//-------
+	//-------
+	char **filenames;
+	int firstttt = 0;
+	//-------
+	//-------
+
 	//Initialization
 	lptr history = NULL;
 	newsymtable = TRUE;
 	progaddr = 0;
-
-	printf("%X\n",StrToHex("FFFF"));
+	breakpoints = NULL;
+	A = X = L = PC = B = S = T = SW = 0;
 
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
 	for (int i=0; i<HASH_SIZE; i++)		
@@ -36,6 +43,21 @@ int main()
 
 	while(TRUE)
 	{
+		//---
+		//---
+		if(firstttt == 0){
+			filenames = (char**)malloc(sizeof(char*)*3);
+			for(int j=0;j<3;j++)
+				filenames[j] = (char*)malloc(sizeof(char)*30);
+			strcpy(filenames[0],"a.obj");
+			strcpy(filenames[1],"b.obj");
+			strcpy(filenames[2],"c.obj");
+			cmd_loader(filenames,3);
+			firstttt = 1;
+		}
+		//---
+		//---
+
 		printf("sicsim>");
 
 		//Get Input
@@ -75,7 +97,6 @@ int main()
 			continue;
 		}
 		
-		//
 		if (argCount != bfrCount - comCount) {
 			//cases such as dump 4, hello
 			cmaFlag = FALSE;
@@ -164,7 +185,7 @@ int main()
 			cmd_loader(filenames,bfrCount-1);
 		}
 
-		else if(compareString(command,"assemble",NULL) && argCount == 2){
+		else if(compareString(command,"assemble",NULL) && bfrCount == 2){
 			isPushed = cmd_assemble(bfr[1]);
 		}
 
@@ -198,6 +219,45 @@ int main()
 			hashlist_printAll(optable);
 			isPushed = FALSE;
 		}
+
+		else if (compareString(command, "bp", NULL) && bfrCount < 3 && cmaFlag){
+			//print all BPs
+			if (bfrCount == 1)
+				bplist_printAll();
+			else if (bfrCount == 2){
+				//clear BPs
+				if(!strcmp(bfr[1],"clear"))
+					bplist_clear();
+				//add a new BP
+				else if(argCount == 2 && isHex(bfr[1]))
+					bplist_push(arg1);
+				//invalid input
+				else
+				{
+					printf("Invalid input!\n");
+					isPushed = TRUE;
+				}
+			}
+		}
+
+		//====
+		
+		else if(!strcmp(command,"format")){
+			int temp = bitToHex(arg1,arg2,arg3);
+			printf("Extracted: %X\n",temp);
+			
+			/*
+			int tmep = bitFormat4(arg1);
+			if(tmep == 1)
+				printf("FORMAT4!!\n");
+			else
+			{
+				printf("Not format4\n");
+			}
+			*/
+		}
+		
+		//=====
 
 		else {
 			isPushed = TRUE;

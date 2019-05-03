@@ -70,4 +70,13 @@ void extsymtab_push(extsymtab** head, char* symbol, int addr, int length);
 extsymptr extsymtab_search(extsymtab* head, char* symbol);
 void extsymtab_printAll(extsymtab*);
 
+typedef struct bplist* bpptr;
+typedef struct bplist {
+	int addr;
+	bpptr next;
+}bplist;
+void bplist_push(int addr);
+void bplist_printAll();
+void bplist_clear();
+
 #endif

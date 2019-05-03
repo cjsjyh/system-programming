@@ -52,6 +52,66 @@ void extsymtab_printAll(extsymtab* head){
 	}
 }
 
+void bplist_push(int addr){
+	bpptr temp;
+	bpptr newNode = (bpptr)malloc(sizeof(bplist));
+	newNode->next = NULL;
+	newNode->addr = addr;
+
+	if (breakpoints == NULL){
+		breakpoints = newNode;
+		return;
+	}
+	else if(breakpoints->addr > addr){
+		newNode->next = breakpoints;
+		breakpoints = newNode;
+		return;
+	}
+	else if(breakpoints->next == NULL){
+		breakpoints->next = newNode;
+		return;
+	}
+	else{
+		temp = breakpoints;
+		while(temp->next->addr < addr){
+			if(temp->next->next == NULL){
+				temp->next->next = newNode;
+				return;
+			}
+			temp = temp -> next;
+		}
+		newNode->next = temp->next;
+		temp->next = newNode;
+	}
+}
+
+void bplist_printAll(){
+	bpptr temp = breakpoints;
+	if(breakpoints == NULL){
+		printf("No breakpoints set yet!\n");
+		return;
+	}
+	printf("breakpoints\n-----------\n");
+	while(temp != NULL){
+		printf("%X\n",temp->addr);
+		temp = temp->next;
+	}
+}
+
+void bplist_clear(){
+	if (breakpoints == NULL)
+		return;
+
+	bpptr temp = breakpoints;
+	bpptr temp2 = temp->next;
+	while(temp2 != NULL){
+		free(temp);
+		temp = temp2;
+		temp2 = temp2->next;
+	}
+	breakpoints = NULL;
+}
+
 //appends new node with command to the end of head linked list
 void linkedlist_push(lptr* head,char* command){
 	lptr temp = *head;

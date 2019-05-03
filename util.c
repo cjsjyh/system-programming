@@ -226,15 +226,56 @@ void charArrHexCal(unsigned char* arr, int value, int len, char operation){
 		converted += value;
 	else
 		converted -= value;
-	printf("conv: %X\n",converted);
 
 	result = (unsigned int)converted;
-	printf("result: %X\n",result);
 
 	for(int i=repeat-1; i>=0; i--){
 		arr[i] = result & 255;
 		result /= 256;
-		printf("result: %X\n",result);
 	}
 	arr[0] +=rem;
+}
+
+int bitAddressMode(int addr){
+	return memory[addr] & 3;
+}
+
+int bitFormat4(int addr){
+	addr += 1;
+	if(memory[addr] & 0x10)
+		return TRUE;
+	else
+		return FALSE;
+}
+
+int bitToHex(int addr,int start,int end){
+	printf("INPUT: %d, %d %d\n",addr,start,end);
+	int i=0,j=1, temp=1;
+	int result = 0;
+	while(1){
+		temp = 0x100;
+		for(; i<8*j; i++){
+			temp = temp >> 1;
+			if(i<start)
+				continue;
+			else if(i>=end){
+				if(memory[addr] & temp)
+					result += 1;
+				/*
+				while(i++ < 8*j -1){
+					result *= 2;
+				}
+				*/
+				return result;
+			}
+			else
+				if(memory[addr] & temp)
+					result += 1;
+			result *= 2;
+			
+		}
+		j++;
+		addr++;
+	}
+	return result;
 }
