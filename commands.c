@@ -47,6 +47,11 @@ int cmd_loader(char **file, int fileCount){
 				plength = extractStrToHex(line,13,6);
 				extsymtab_push(&head,temp,pstartAddr,plength);
 				totallength += plength;
+				if(filenum + 1 == fileCount){
+					endaddr[endindex++] = progaddr + totallength;
+					printf("end[%d] addr set to %X\n",endindex-1,endaddr[endindex-1]);
+				}
+					
 			}
 			else if(line[0] == 'D'){
 				int symvalue;
@@ -124,21 +129,24 @@ int cmd_loader(char **file, int fileCount){
 				int FixLen = extractStrToHex(line,7,2);
 				int FixRefIndex;
 				//relocatable program
-				if(strlen(line) == 9)
+				
+				if(strlen(line) < 12)
 					charArrHexCal(&(memory[FixAddr]),pstartAddr,FixLen,'+');
+				
 				//uses reference number
-				else if(strlen(line) == 12){
+				else if(strlen(line) < 14){
 					FixRefIndex = extractStrToHex(line,10,2);
 					charArrHexCal(&(memory[FixAddr]),refNum[FixRefIndex],FixLen,line[9]);
 				}
+				
 				else{
 					extractStr(temp,line,10,6);
 					searchResult = extsymtab_search(head,temp);
 					charArrHexCal(&(memory[FixAddr]),searchResult->addr,FixLen,line[9]);
 				}
-					
+				
 
-				printf("REF INDEX: %X\n",FixRefIndex);
+				
 
 
 				
@@ -946,21 +954,21 @@ int addressingMode(char* str){
 }
 
 int run_opcodes(int addr){
-	int mode, format, disp, relative, value;
+	int mode, format, relative, value;
+	unsigned int disp;
 	int opcode;
 	int memoryValue = -1;
 	
 
 	opcode = bitToHex(addr,0,7);
 	opcode -= bitToHex(addr,4,7) % 4;
-	printf("[ %6X ]OPCODE: %X\n",addr,opcode);
+	//printf("[ %6X ]OPCODE: %X\n",addr,opcode);
 
 	//format 2
 	switch(opcode){
 		int reg1, reg2;
 		//COMPR FORMAT 2
 		case 0xA0:
-			printf("FORMAT2!\n");
 			reg1 = registers[bitToHex(addr,8,11)];
 			reg2 = registers[bitToHex(addr,12,15)];
 			compareReg(reg1,reg2);
@@ -968,16 +976,15 @@ int run_opcodes(int addr){
 			return 2;
 		//CLEAR FORMAT 2
 		case 0xB4:
-			printf("FORMAT2!\n");
 			registers[bitToHex(addr,8,11)] = 0;
 			registers[registerNum("PC")] += 2;
 			return 2;
 		//TIXR FORMAT2
 		case 0xB8:
-			printf("FORMAT2!\n");
 			registers[registerNum("X")]++;
 			reg1 = registers[registerNum("X")];
 			reg2 = registers[bitToHex(addr,8,11)];
+			printf("Reg X: %X Reg2 : %X\n",reg1,reg2);
 			compareReg(reg1,reg2);
 			registers[registerNum("PC")] += 2;
 			return 2;
@@ -987,37 +994,38 @@ int run_opcodes(int addr){
 	mode = bitAddressMode(addr);
 	format = bitFormat4(addr);
 
+	//format 4
 	if(format){
-		printf("FORMAT4!\n");
 		registers[registerNum("PC")] += 4;
-		//format 4
 		disp = bitToHex(addr,12,31);
 	}
+	//format 3
 	else{
-		printf("FORMAT3!\n");
 		registers[registerNum("PC")] += 3;
-		//format 3
 		disp = bitToHex(addr,12,23);
-		
-		relative = bitToHex(addr,9,11);
+		//if negative
+		if(disp & 0x800)
+			disp = disp | 0xFFFFF000;
+
+		relative = bitToHex(addr,8,11);
+		//indexed addressing
+		if(relative & 8)
+			disp += registers[registerNum("X")];
+
 		//base relative
-		if(relative > 3)
+		if(relative & 4)
 			relative = registers[registerNum("B")];
 		//pc relative
-		else if(relative > 1)
+		else if(relative & 2)
 			relative = registers[registerNum("PC")];
 		//direct addresing
 		else
-			relative = 0;		
+			relative = 0;
 
-		//simple addressing
-		if(mode == SIMPLE){
-			disp += relative;
-		}
+		disp += relative;
+
 		//indirect addressing
 		if(mode == INDIRECT){
-			int temp_format;
-			disp += relative;
 			//retrieve addr to visit from the addr stored
 			disp = bitToHex(disp,0,23);
 			//extract content from new addr
@@ -1038,8 +1046,10 @@ int run_opcodes(int addr){
 			return format;
 		//JLT >
 		case 0x38:
-			if(registers[registerNum("SW")] == -1)
+			if(registers[registerNum("SW")] == -1){
+				printf("JLT jumping to %X\n",disp);
 				registers[registerNum("PC")] = disp;
+			}
 			return format;
 		//JEQ =
 		case 0x30:
@@ -1048,6 +1058,7 @@ int run_opcodes(int addr){
 			return format;
 	}
 
+	//simple addressing
 	if(mode == SIMPLE){
 		disp = bitToHex(disp,0,23);
 	}
@@ -1055,19 +1066,20 @@ int run_opcodes(int addr){
 	switch(opcode){
 		//LDA
 		case 0x00:
-			registers[registerNum("A")] = bitToHex(disp,0,23);
+			registers[registerNum("A")] = disp;
 			return format;
 		//LDB
 		case 0x68:
-			registers[registerNum("B")] = bitToHex(disp,0,23);
+			registers[registerNum("B")] = disp;
 			return format;
 		//LDT
 		case 0x74:
-			registers[registerNum("T")] = bitToHex(disp,0,23);
+			printf("Inserting %X to T\n", disp);
+			registers[registerNum("T")] = disp;
 			return format;
 		//LDCH
 		case 0x50:
-			storeLastByte(registerNum("A"),(bitToHex(disp,0,23) & 0xFF));
+			storeLastByte(registerNum("A"),(disp & 0xFF));
 			return format;
 		//STA
 		case 0x0C:
@@ -1089,7 +1101,7 @@ int run_opcodes(int addr){
 		case 0x4C:
 			registers[registerNum("PC")] = registers[registerNum("L")];
 			return format;
-		//COMP
+		//COMP with A
 		case 0x28:
 			memoryValue = bitToHex(disp,0,23);
 			if(registers[registerNum("A")] > memoryValue)

@@ -28,7 +28,8 @@ int main()
 	progaddr = 0;
 	breakpoints = NULL;
 	for(int i=0;i<10;i++)
-		registers[i] = 0;
+		registers[i] = endaddr[i] = endaddr[10+i] = 0;
+	endindex = 0;
 
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
 	for (int i=0; i<HASH_SIZE; i++)		
@@ -67,23 +68,13 @@ int main()
 			cmd_loader(filenames,3);
 			firstttt = 1;
 		}
-		
-		else if(!strcmp(command,"format")){
-			int temp = bitToHex(arg1,arg2,arg3);
-			printf("Extracted: %X\n",temp);
-			
-			
-			int tmep = bitFormat4(arg1);
-			if(tmep == 1)
-				printf("FORMAT4!!\n");
-			else
-			{
-				printf("Not format4\n");
-			}
-			
+		*/
+		if(!strcmp(command,"test")){
+			run_opcodes(arg1);
+			printReg();
 		}
 
-		*/
+		
 		//---------------------------------------------------
 		//---------------------------------------------------
 		
@@ -263,11 +254,20 @@ int main()
 		}
 
 		else if (compareString(command, "run", NULL) && bfrCount == 1){
+			int flag = TRUE;
 			registers[registerNum("PC")] = progaddr;
 			printf("[PC: %6X]\n",registers[registerNum("PC")]);
-			while(registers[registerNum("PC")] < 0x5077){
+			while(flag && registers[registerNum("PC")] < 0x5500){
 				printf("[PC: %6X]\n",registers[registerNum("PC")]);
 				run_opcodes(registers[registerNum("PC")]);
+				
+				//check for end of program
+				for(int k=0;k < endindex;k++){
+					if (registers[registerNum("PC")] >= endaddr[k]){
+						printf("register: %X endaddr: %X\n",registers[registerNum("PC")],endaddr[k]);
+						flag = FALSE;
+					}
+				}
 			}
 			printReg();
 		}

@@ -28,5 +28,8 @@ int progaddr;
 // | A | X | L | B | S | T | F |   | PC | SW |
 int registers[10];
 
+int endaddr[20];
+int endindex;
+
 #endif
 
