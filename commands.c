@@ -954,10 +954,8 @@ void run_opcodes(int addr){
 	int opcode;
 	int memoryValue = -1;
 	
-
 	opcode = bitToHex(addr,0,7);
 	opcode -= bitToHex(addr,4,7) % 4;
-	//printf("[ %6X ]OPCODE: %X\n",addr,opcode);
 
 	//format 2
 	switch(opcode){
@@ -979,7 +977,6 @@ void run_opcodes(int addr){
 			registers[registerNum("X")]++;
 			reg1 = registers[registerNum("X")];
 			reg2 = registers[bitToHex(addr,8,11)];
-			printf("Reg X: %X Reg2 : %X\n",reg1,reg2);
 			compareReg(reg1,reg2);
 			registers[registerNum("PC")] += 2;
 			return;
@@ -1023,9 +1020,6 @@ void run_opcodes(int addr){
 		if(mode == INDIRECT){
 			//retrieve addr to visit from the addr stored
 			disp = bitToHex(disp,0,23);
-			//extract content from new addr
-			//disp = bitToHex(disp,0,23);
-			
 		}
 	}
 	
@@ -1041,8 +1035,7 @@ void run_opcodes(int addr){
 			return;
 		//JLT >
 		case 0x38:
-			if(registers[registerNum("SW")] == -1){
-				printf("JLT jumping to %X\n",disp);
+			if(registers[registerNum("SW")] == 1){
 				registers[registerNum("PC")] = disp;
 			}
 			return;
@@ -1053,17 +1046,14 @@ void run_opcodes(int addr){
 			return;
 		//STA
 		case 0x0C:
-			printf("Export to %X from A\n", disp);
 			writeToMem(disp,registerNum("A"));
 			return;
 		//STX
 		case 0x10:
-			printf("Export to %X from X\n", disp);
 			writeToMem(disp,registerNum("X"));
 			return;
 		//STL
 		case 0x14:
-			printf("Export to %X from L\n", disp);
 			writeToMem(disp,registerNum("L"));
 			return;
 		//STCH
@@ -1073,6 +1063,11 @@ void run_opcodes(int addr){
 		//RSUB
 		case 0x4C:
 			registers[registerNum("PC")] = registers[registerNum("L")];
+			return;
+		//LDCH
+		case 0x50:
+			disp = bitToHex(disp,0,7);
+			storeLastByte(registerNum("A"),disp);
 			return;
 	}
 
@@ -1084,22 +1079,15 @@ void run_opcodes(int addr){
 	switch(opcode){
 		//LDA
 		case 0x00:
-			printf("Inserting %X to A\n", disp);
 			registers[registerNum("A")] = disp;
 			return;
 		//LDB
 		case 0x68:
-			printf("Inserting %X to B\n", disp);
 			registers[registerNum("B")] = disp;
 			return;
 		//LDT
 		case 0x74:
-			printf("Inserting %X to T\n", disp);
 			registers[registerNum("T")] = disp;
-			return;
-		//LDCH
-		case 0x50:
-			storeLastByte(registerNum("A"),(disp & 0xFF));
 			return;
 		//COMP with A
 		case 0x28:

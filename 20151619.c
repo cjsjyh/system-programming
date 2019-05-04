@@ -239,11 +239,15 @@ int main()
 				bplist_printAll();
 			else if (bfrCount == 2){
 				//clear BPs
-				if(!strcmp(bfr[1],"clear"))
+				if(!strcmp(bfr[1],"clear")){
 					bplist_clear();
+					printf("[ok] clear all breakpoints\n");
+				}
 				//add a new BP
-				else if(argCount == 2 && isHex(bfr[1]))
+				else if(argCount == 2 && isHex(bfr[1])){
 					bplist_push(arg1);
+					printf("[ok] create breakpoint %4X\n",arg1);
+				}
 				//invalid input
 				else
 				{
@@ -257,20 +261,18 @@ int main()
 			int flag = TRUE;
 			registers[registerNum("PC")] = progaddr;
 
-			printf("[PC: %6X]\n",registers[registerNum("PC")]);
-			while(flag && registers[registerNum("PC")] < 0x5500){
-				printf("[PC: %6X]\n",registers[registerNum("PC")]);
+			while(flag){
+
 				run_opcodes(registers[registerNum("PC")]);
 				
 				//check for end of program
 				for(int k=0;k < endindex;k++){
-					if (registers[registerNum("PC")] >= endaddr[k]){
-						printf("register: %X endaddr: %X\n",registers[registerNum("PC")],endaddr[k]);
+					if (registers[registerNum("PC")] >= endaddr[k])
 						flag = FALSE;
-					}
 				}
 			}
 			printReg();
+			printf("End Program\n");
 		}
 		
 
