@@ -20,6 +20,6 @@ int cmd_fill(int, int, int);
 int hashSearch_opcode(char*);
 char* hashSearch_format(char*);
 int addressingMode(char*);
-int run_opcodes(int addr);
+void run_opcodes(int addr);
 
 #endif

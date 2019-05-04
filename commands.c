@@ -49,7 +49,7 @@ int cmd_loader(char **file, int fileCount){
 				totallength += plength;
 				if(filenum + 1 == fileCount){
 					endaddr[endindex++] = progaddr + totallength;
-					printf("end[%d] addr set to %X\n",endindex-1,endaddr[endindex-1]);
+					registers[registerNum("L")] = progaddr + totallength;
 				}
 					
 			}
@@ -144,11 +144,6 @@ int cmd_loader(char **file, int fileCount){
 					searchResult = extsymtab_search(head,temp);
 					charArrHexCal(&(memory[FixAddr]),searchResult->addr,FixLen,line[9]);
 				}
-				
-
-				
-
-
 				
 			}//M record
 			
@@ -953,7 +948,7 @@ int addressingMode(char* str){
 		return 3;
 }
 
-int run_opcodes(int addr){
+void run_opcodes(int addr){
 	int mode, format, relative, value;
 	unsigned int disp;
 	int opcode;
@@ -973,12 +968,12 @@ int run_opcodes(int addr){
 			reg2 = registers[bitToHex(addr,12,15)];
 			compareReg(reg1,reg2);
 			registers[registerNum("PC")] += 2;
-			return 2;
+			return;
 		//CLEAR FORMAT 2
 		case 0xB4:
 			registers[bitToHex(addr,8,11)] = 0;
 			registers[registerNum("PC")] += 2;
-			return 2;
+			return;
 		//TIXR FORMAT2
 		case 0xB8:
 			registers[registerNum("X")]++;
@@ -987,7 +982,7 @@ int run_opcodes(int addr){
 			printf("Reg X: %X Reg2 : %X\n",reg1,reg2);
 			compareReg(reg1,reg2);
 			registers[registerNum("PC")] += 2;
-			return 2;
+			return;
 		
 	}
 
@@ -1029,7 +1024,7 @@ int run_opcodes(int addr){
 			//retrieve addr to visit from the addr stored
 			disp = bitToHex(disp,0,23);
 			//extract content from new addr
-			disp = bitToHex(disp,0,23);
+			//disp = bitToHex(disp,0,23);
 			
 		}
 	}
@@ -1038,24 +1033,47 @@ int run_opcodes(int addr){
 		//J
 		case 0x3C:
 			registers[registerNum("PC")]= disp;
-			return format;
+			return;
 		//JSUB
 		case 0x48:
 			registers[registerNum("L")] = registers[registerNum("PC")];
 			registers[registerNum("PC")] = disp;
-			return format;
+			return;
 		//JLT >
 		case 0x38:
 			if(registers[registerNum("SW")] == -1){
 				printf("JLT jumping to %X\n",disp);
 				registers[registerNum("PC")] = disp;
 			}
-			return format;
+			return;
 		//JEQ =
 		case 0x30:
 			if (registers[registerNum("SW")] == 0)
 				registers[registerNum("PC")] = disp;
-			return format;
+			return;
+		//STA
+		case 0x0C:
+			printf("Export to %X from A\n", disp);
+			writeToMem(disp,registerNum("A"));
+			return;
+		//STX
+		case 0x10:
+			printf("Export to %X from X\n", disp);
+			writeToMem(disp,registerNum("X"));
+			return;
+		//STL
+		case 0x14:
+			printf("Export to %X from L\n", disp);
+			writeToMem(disp,registerNum("L"));
+			return;
+		//STCH
+		case 0x54:
+			memory[disp] = registers[registerNum(("A"))] & 0xFF;
+			return;
+		//RSUB
+		case 0x4C:
+			registers[registerNum("PC")] = registers[registerNum("L")];
+			return;
 	}
 
 	//simple addressing
@@ -1066,63 +1084,44 @@ int run_opcodes(int addr){
 	switch(opcode){
 		//LDA
 		case 0x00:
+			printf("Inserting %X to A\n", disp);
 			registers[registerNum("A")] = disp;
-			return format;
+			return;
 		//LDB
 		case 0x68:
+			printf("Inserting %X to B\n", disp);
 			registers[registerNum("B")] = disp;
-			return format;
+			return;
 		//LDT
 		case 0x74:
 			printf("Inserting %X to T\n", disp);
 			registers[registerNum("T")] = disp;
-			return format;
+			return;
 		//LDCH
 		case 0x50:
 			storeLastByte(registerNum("A"),(disp & 0xFF));
-			return format;
-		//STA
-		case 0x0C:
-			writeToMem(disp,registerNum("A"));
-			return format;
-		//STX
-		case 0x10:
-			writeToMem(disp,registerNum("X"));
-			return format;
-		//STL
-		case 0x14:
-			writeToMem(disp,registerNum("L"));
-			return format;
-		//STCH
-		case 0x54:
-			memory[disp] = registers[registerNum(("A"))] & 0xFF;
-			return format;
-		//RSUB
-		case 0x4C:
-			registers[registerNum("PC")] = registers[registerNum("L")];
-			return format;
+			return;
 		//COMP with A
 		case 0x28:
-			memoryValue = bitToHex(disp,0,23);
-			if(registers[registerNum("A")] > memoryValue)
+			if(registers[registerNum("A")] > disp)
 				registers[registerNum("SW")] = -1;
-			else if(registers[registerNum("A")] == memoryValue)
+			else if(registers[registerNum("A")] == disp)
 				registers[registerNum("SW")] = 0;
 			else
 				registers[registerNum("SW")] = 1;
-			return format;
-		//TD
+			return;
+		//TD 1 if device is ready 0 if not
 		case 0xE0:
 			registers[registerNum("SW")] = 1;
-			return format;
-		//RD
+			return;
+		//RD set rightmost byte of A with content
 		case 0xD8:
 			storeLastByte(registerNum("A"),0);
-			return format;
+			return;
 		//WD
 		case 0xDC:
-			return format;
+			return;
 	}
 
-	return format;
+	return;
 }

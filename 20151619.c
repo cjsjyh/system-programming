@@ -256,6 +256,7 @@ int main()
 		else if (compareString(command, "run", NULL) && bfrCount == 1){
 			int flag = TRUE;
 			registers[registerNum("PC")] = progaddr;
+
 			printf("[PC: %6X]\n",registers[registerNum("PC")]);
 			while(flag && registers[registerNum("PC")] < 0x5500){
 				printf("[PC: %6X]\n",registers[registerNum("PC")]);
