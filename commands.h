@@ -4,6 +4,9 @@
 #define CHAR 0
 #define HEX 1
 #define DEC 2
+#define SIMPLE 3
+#define INDIRECT 2
+#define IMMEDIATE 1
 
 void cmd_dir();
 void cmd_help();
@@ -17,6 +20,6 @@ int cmd_fill(int, int, int);
 int hashSearch_opcode(char*);
 char* hashSearch_format(char*);
 int addressingMode(char*);
-
+int run_opcodes(int addr);
 
 #endif

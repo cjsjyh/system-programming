@@ -13,14 +13,12 @@ void cmd_help() {
 	return;
 }
 
-//char *strncpy(char *dest, const char *src, size_t n)
-
 int cmd_loader(char **file, int fileCount){
 	extsymtab *head=NULL;
 	char line[300]={0,};
 	char temp[200]={0,};
 	FILE *fp;
-	int pstartAddr=0,plength=0;
+	int pstartAddr=0,plength=0,totallength=0;
 
 
 	//check if invalid file name is included
@@ -48,6 +46,7 @@ int cmd_loader(char **file, int fileCount){
 				pstartAddr += extractStrToHex(line,7,6) + plength;
 				plength = extractStrToHex(line,13,6);
 				extsymtab_push(&head,temp,pstartAddr,plength);
+				totallength += plength;
 			}
 			else if(line[0] == 'D'){
 				int symvalue;
@@ -71,9 +70,9 @@ int cmd_loader(char **file, int fileCount){
 			memset(temp, 0, sizeof temp);
 			memset(line, 0, sizeof line);
 		}//while
+
+		fclose(fp);
 	}//for
-	
-	extsymtab_printAll(head);
 	
 	//PASS2 : load to memory
 	for(int filenum=0;filenum < fileCount; filenum++){
@@ -82,7 +81,7 @@ int cmd_loader(char **file, int fileCount){
 
 		fp = fopen(file[filenum],"r");
 		while(fgets(line,sizeof(line),fp)){
-			
+
 			if(line[0] == 'T'){
 				int textAddr,textLen;
 				//address for text record to be loaded
@@ -123,9 +122,26 @@ int cmd_loader(char **file, int fileCount){
 			else if(line[0] == 'M'){
 				int FixAddr = extractStrToHex(line,1,6) + pstartAddr;
 				int FixLen = extractStrToHex(line,7,2);
-				int FixRefIndex = extractStrToHex(line,10,2);
+				int FixRefIndex;
+				//relocatable program
+				if(strlen(line) == 9)
+					charArrHexCal(&(memory[FixAddr]),pstartAddr,FixLen,'+');
+				//uses reference number
+				else if(strlen(line) == 12){
+					FixRefIndex = extractStrToHex(line,10,2);
+					charArrHexCal(&(memory[FixAddr]),refNum[FixRefIndex],FixLen,line[9]);
+				}
+				else{
+					extractStr(temp,line,10,6);
+					searchResult = extsymtab_search(head,temp);
+					charArrHexCal(&(memory[FixAddr]),searchResult->addr,FixLen,line[9]);
+				}
+					
+
+				printf("REF INDEX: %X\n",FixRefIndex);
+
+
 				
-				charArrHexCal(&(memory[FixAddr]),refNum[FixRefIndex],FixLen,line[9]);
 			}//M record
 			
 			else if(line[0] == 'E'){
@@ -143,7 +159,7 @@ int cmd_loader(char **file, int fileCount){
 	extsymtab_printAll(head);
 	//print total length!!
 	printf("------------------------------------------------------\n");
-	printf("\t\t\t\ttotal length\t%04X\n",0xFFFFFFF);
+	printf("\t\t\t\ttotal length\t%04X\n",totallength);
 }
 
 void cmd_type(char* filename){
@@ -930,88 +946,170 @@ int addressingMode(char* str){
 }
 
 int run_opcodes(int addr){
-	int mode, format, disp;
-	int opcode = extractStrToHex(&(memory[addr]),0,2);
-	opcode -= opcode % 4;
+	int mode, format, disp, relative, value;
+	int opcode;
+	int memoryValue = -1;
+	
+
+	opcode = bitToHex(addr,0,7);
+	opcode -= bitToHex(addr,4,7) % 4;
+	printf("[ %6X ]OPCODE: %X\n",addr,opcode);
+
 	//format 2
 	switch(opcode){
+		int reg1, reg2;
 		//COMPR FORMAT 2
 		case 0xA0:
-			break;
+			printf("FORMAT2!\n");
+			reg1 = registers[bitToHex(addr,8,11)];
+			reg2 = registers[bitToHex(addr,12,15)];
+			compareReg(reg1,reg2);
+			registers[registerNum("PC")] += 2;
+			return 2;
 		//CLEAR FORMAT 2
 		case 0xB4:
-			break;
+			printf("FORMAT2!\n");
+			registers[bitToHex(addr,8,11)] = 0;
+			registers[registerNum("PC")] += 2;
+			return 2;
 		//TIXR FORMAT2
 		case 0xB8:
-			break;
+			printf("FORMAT2!\n");
+			registers[registerNum("X")]++;
+			reg1 = registers[registerNum("X")];
+			reg2 = registers[bitToHex(addr,8,11)];
+			compareReg(reg1,reg2);
+			registers[registerNum("PC")] += 2;
+			return 2;
 		
-		return 2;
 	}
 
 	mode = bitAddressMode(addr);
 	format = bitFormat4(addr);
 
 	if(format){
+		printf("FORMAT4!\n");
+		registers[registerNum("PC")] += 4;
 		//format 4
 		disp = bitToHex(addr,12,31);
 	}
 	else{
+		printf("FORMAT3!\n");
+		registers[registerNum("PC")] += 3;
 		//format 3
 		disp = bitToHex(addr,12,23);
+		
+		relative = bitToHex(addr,9,11);
+		//base relative
+		if(relative > 3)
+			relative = registers[registerNum("B")];
+		//pc relative
+		else if(relative > 1)
+			relative = registers[registerNum("PC")];
+		//direct addresing
+		else
+			relative = 0;		
+
+		//simple addressing
+		if(mode == SIMPLE){
+			disp += relative;
+		}
+		//indirect addressing
+		if(mode == INDIRECT){
+			int temp_format;
+			disp += relative;
+			//retrieve addr to visit from the addr stored
+			disp = bitToHex(disp,0,23);
+			//extract content from new addr
+			disp = bitToHex(disp,0,23);
+			
+		}
+	}
+	
+	switch(opcode){
+		//J
+		case 0x3C:
+			registers[registerNum("PC")]= disp;
+			return format;
+		//JSUB
+		case 0x48:
+			registers[registerNum("L")] = registers[registerNum("PC")];
+			registers[registerNum("PC")] = disp;
+			return format;
+		//JLT >
+		case 0x38:
+			if(registers[registerNum("SW")] == -1)
+				registers[registerNum("PC")] = disp;
+			return format;
+		//JEQ =
+		case 0x30:
+			if (registers[registerNum("SW")] == 0)
+				registers[registerNum("PC")] = disp;
+			return format;
+	}
+
+	if(mode == SIMPLE){
+		disp = bitToHex(disp,0,23);
 	}
 
 	switch(opcode){
 		//LDA
 		case 0x00:
-			break;
+			registers[registerNum("A")] = bitToHex(disp,0,23);
+			return format;
 		//LDB
 		case 0x68:
-			break;
+			registers[registerNum("B")] = bitToHex(disp,0,23);
+			return format;
 		//LDT
 		case 0x74:
-			break;
+			registers[registerNum("T")] = bitToHex(disp,0,23);
+			return format;
 		//LDCH
 		case 0x50:
-			break;
+			storeLastByte(registerNum("A"),(bitToHex(disp,0,23) & 0xFF));
+			return format;
 		//STA
 		case 0x0C:
-			break;
+			writeToMem(disp,registerNum("A"));
+			return format;
 		//STX
 		case 0x10:
-			break;
+			writeToMem(disp,registerNum("X"));
+			return format;
 		//STL
 		case 0x14:
-			break;
+			writeToMem(disp,registerNum("L"));
+			return format;
 		//STCH
 		case 0x54:
-			break;
-		//J
-		case 0x3C:
-			break;
-		//JSUB
-		case 0x48:
-			break;
-		//JLT
-		case 0x38:
-			break;
-		//JEQ
-		case 0x30:
-			break;
+			memory[disp] = registers[registerNum(("A"))] & 0xFF;
+			return format;
 		//RSUB
 		case 0x4C:
-			break;
+			registers[registerNum("PC")] = registers[registerNum("L")];
+			return format;
 		//COMP
 		case 0x28:
-			break;
+			memoryValue = bitToHex(disp,0,23);
+			if(registers[registerNum("A")] > memoryValue)
+				registers[registerNum("SW")] = -1;
+			else if(registers[registerNum("A")] == memoryValue)
+				registers[registerNum("SW")] = 0;
+			else
+				registers[registerNum("SW")] = 1;
+			return format;
 		//TD
 		case 0xE0:
-			break;
+			registers[registerNum("SW")] = 1;
+			return format;
 		//RD
 		case 0xD8:
-			break;
+			storeLastByte(registerNum("A"),0);
+			return format;
 		//WD
 		case 0xDC:
-			break;
+			return format;
 	}
 
 	return format;

@@ -24,7 +24,9 @@ symptr *symboltable;
 bpptr breakpoints;
 int newsymtable;
 int progaddr;
-int A,X,L,PC,B,S,T,SW;
+// | 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8  | 9  |
+// | A | X | L | B | S | T | F |   | PC | SW |
+int registers[10];
 
 #endif
 

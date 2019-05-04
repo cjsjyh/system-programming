@@ -27,7 +27,8 @@ int main()
 	newsymtable = TRUE;
 	progaddr = 0;
 	breakpoints = NULL;
-	A = X = L = PC = B = S = T = SW = 0;
+	for(int i=0;i<10;i++)
+		registers[i] = 0;
 
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
 	for (int i=0; i<HASH_SIZE; i++)		
@@ -43,8 +44,19 @@ int main()
 
 	while(TRUE)
 	{
-		//---
-		//---
+		printf("sicsim>");
+
+		//Get Input
+		fgets(fullCmd, sizeof fullCmd,stdin);
+		//save with the correct format
+		argCount = sscanf(fullCmd,"%s%x ,%x ,%x",command, &arg1, &arg2, &arg3);
+		//save everything as string for checking
+		bfrCount = sscanf(fullCmd,"%s%s%s%s%s%s%s",bfr[0],bfr[1],bfr[2],bfr[3],bfr[4],bfr[5],bfr[6]);
+		
+		
+		//---------------------------------------------------
+		//--------------------------------------------------
+		/*
 		if(firstttt == 0){
 			filenames = (char**)malloc(sizeof(char*)*3);
 			for(int j=0;j<3;j++)
@@ -55,17 +67,27 @@ int main()
 			cmd_loader(filenames,3);
 			firstttt = 1;
 		}
-		//---
-		//---
+		
+		else if(!strcmp(command,"format")){
+			int temp = bitToHex(arg1,arg2,arg3);
+			printf("Extracted: %X\n",temp);
+			
+			
+			int tmep = bitFormat4(arg1);
+			if(tmep == 1)
+				printf("FORMAT4!!\n");
+			else
+			{
+				printf("Not format4\n");
+			}
+			
+		}
 
-		printf("sicsim>");
-
-		//Get Input
-		fgets(fullCmd, sizeof fullCmd,stdin);
-		//save with the correct format
-		argCount = sscanf(fullCmd,"%s%x ,%x ,%x",command, &arg1, &arg2, &arg3);
-		//save everything as string for checking
-		bfrCount = sscanf(fullCmd,"%s%s%s%s%s%s%s",bfr[0],bfr[1],bfr[2],bfr[3],bfr[4],bfr[5],bfr[6]);
+		*/
+		//---------------------------------------------------
+		//---------------------------------------------------
+		
+		
 		//For input with input value (space) , value (space) , value
 		if(!strcmp(",",bfr[2])){
 			for(int i=3; i<7; i++)
@@ -240,24 +262,16 @@ int main()
 			}
 		}
 
-		//====
-		
-		else if(!strcmp(command,"format")){
-			int temp = bitToHex(arg1,arg2,arg3);
-			printf("Extracted: %X\n",temp);
-			
-			/*
-			int tmep = bitFormat4(arg1);
-			if(tmep == 1)
-				printf("FORMAT4!!\n");
-			else
-			{
-				printf("Not format4\n");
+		else if (compareString(command, "run", NULL) && bfrCount == 1){
+			registers[registerNum("PC")] = progaddr;
+			printf("[PC: %6X]\n",registers[registerNum("PC")]);
+			while(registers[registerNum("PC")] < 0x5077){
+				printf("[PC: %6X]\n",registers[registerNum("PC")]);
+				run_opcodes(registers[registerNum("PC")]);
 			}
-			*/
+			printReg();
 		}
 		
-		//=====
 
 		else {
 			isPushed = TRUE;

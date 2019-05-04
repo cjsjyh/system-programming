@@ -175,7 +175,7 @@ int registerNum(char* reg){
 	else if(!strcmp(reg,"F"))
 		return 6;
 	else
-		return -1;
+		return 7;
 }
 
 void extractStr(char* dest, char* source, int start, int len){
@@ -249,12 +249,11 @@ int bitFormat4(int addr){
 }
 
 int bitToHex(int addr,int start,int end){
-	printf("INPUT: %d, %d %d\n",addr,start,end);
 	int i=0,j=1, temp=1;
 	int result = 0;
+	temp = 0x100;
 	while(1){
-		temp = 0x100;
-		for(; i<8*j; i++){
+		for(; i<4*j; i++){
 			temp = temp >> 1;
 			if(i<start)
 				continue;
@@ -274,8 +273,44 @@ int bitToHex(int addr,int start,int end){
 			result *= 2;
 			
 		}
+		if(j % 2 == 0){
+			temp = 0x100;
+			addr++;
+		}
 		j++;
-		addr++;
 	}
 	return result;
+}
+
+void compareReg(int a, int b){
+	if(a > b)
+		registers[registerNum("SW")] = -1;
+	else if(a == b)
+		registers[registerNum("SW")] = 0;
+	else
+		registers[registerNum("SW")] = 1;
+}
+
+void printReg(){
+	printf("A : %06X X : %06X\n",registers[0],registers[1]);
+	printf("L : %06X PC: %06X\n",registers[2],registers[8]);
+	printf("B : %06X S : %06X\n",registers[3],registers[4]);
+	printf("T : %06X\n",registers[5]);
+}
+
+void writeToMem(int addr, int regNum){
+	int temp = registers[regNum];
+	int mask = 0xFF;
+	for(int i=2;i>=0;i--){
+		memory[addr+i] = temp & mask;
+		temp = temp >> 8;
+	}
+}
+
+int getLastByte(int regNum){
+	return registers[regNum] & 0xFF;
+}
+
+void storeLastByte(int regNum, int value){
+	registers[regNum] = (registers[regNum] & 0xFFFF00) + value;
 }
