@@ -77,6 +77,7 @@ typedef struct bplist {
 }bplist;
 void bplist_push(int addr);
 void bplist_printAll();
+int bplist_search(int);
 void bplist_clear();
 
 #endif

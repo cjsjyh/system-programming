@@ -85,10 +85,20 @@ void bplist_push(int addr){
 	}
 }
 
+int bplist_search(int addr){
+	bpptr temp = breakpoints;
+	while( temp != NULL ){
+		if(temp->addr == addr)
+			return TRUE;
+		temp = temp->next;
+	}
+	return FALSE;
+}
+
 void bplist_printAll(){
 	bpptr temp = breakpoints;
 	if(breakpoints == NULL){
-		printf("No breakpoints set yet!\n");
+		printf("No breakpoints set.\n");
 		return;
 	}
 	printf("breakpoints\n-----------\n");

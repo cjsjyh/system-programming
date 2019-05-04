@@ -14,13 +14,7 @@ int main()
 	char bfr[7][30];
 	unsigned int arg1,arg2,arg3;
 	int nextAdr = 0,cmaFlag=1;
-
-	//-------
-	//-------
-	char **filenames;
-	int firstttt = 0;
-	//-------
-	//-------
+	int bpflag = FALSE, lastbp = -1;
 
 	//Initialization
 	lptr history = NULL;
@@ -53,32 +47,7 @@ int main()
 		argCount = sscanf(fullCmd,"%s%x ,%x ,%x",command, &arg1, &arg2, &arg3);
 		//save everything as string for checking
 		bfrCount = sscanf(fullCmd,"%s%s%s%s%s%s%s",bfr[0],bfr[1],bfr[2],bfr[3],bfr[4],bfr[5],bfr[6]);
-		
-		
-		//---------------------------------------------------
-		//--------------------------------------------------
-		/*
-		if(firstttt == 0){
-			filenames = (char**)malloc(sizeof(char*)*3);
-			for(int j=0;j<3;j++)
-				filenames[j] = (char*)malloc(sizeof(char)*30);
-			strcpy(filenames[0],"a.obj");
-			strcpy(filenames[1],"b.obj");
-			strcpy(filenames[2],"c.obj");
-			cmd_loader(filenames,3);
-			firstttt = 1;
-		}
-		*/
-		if(!strcmp(command,"test")){
-			run_opcodes(arg1);
-			printReg();
-		}
 
-		
-		//---------------------------------------------------
-		//---------------------------------------------------
-		
-		
 		//For input with input value (space) , value (space) , value
 		if(!strcmp(",",bfr[2])){
 			for(int i=3; i<7; i++)
@@ -258,21 +227,35 @@ int main()
 		}
 
 		else if (compareString(command, "run", NULL) && bfrCount == 1){
-			int flag = TRUE;
-			registers[registerNum("PC")] = progaddr;
+			int endflag = TRUE;
 
-			while(flag){
+			if(bpflag == FALSE)
+				registers[registerNum("PC")] = progaddr;
+
+			while(endflag){
+				int pcreg = registers[registerNum("PC")];
+				if(bplist_search(pcreg) && pcreg != lastbp){
+					bpflag = TRUE;
+					printReg();
+					lastbp = pcreg;
+					printf("Stop at checkpoint[%4X]\n",lastbp);
+					break;
+				}//if
 
 				run_opcodes(registers[registerNum("PC")]);
 				
 				//check for end of program
 				for(int k=0;k < endindex;k++){
-					if (registers[registerNum("PC")] >= endaddr[k])
-						flag = FALSE;
-				}
-			}
-			printReg();
-			printf("End Program\n");
+					if (registers[registerNum("PC")] >= endaddr[k]){
+						endflag = FALSE;
+						bpflag = FALSE;
+						lastbp = -1;
+						printReg();
+						printf("End Program\n");
+					}
+				}//for
+			}//while
+			
 		}
 		
 
