@@ -52,7 +52,7 @@ void extsymtab_printAll(extsymtab* head){
 	}
 }
 
-void bplist_push(int addr){
+int bplist_push(int addr){
 	bpptr temp;
 	bpptr newNode = (bpptr)malloc(sizeof(bplist));
 	newNode->next = NULL;
@@ -60,23 +60,31 @@ void bplist_push(int addr){
 
 	if (breakpoints == NULL){
 		breakpoints = newNode;
-		return;
+		return 1;
 	}
 	else if(breakpoints->addr > addr){
 		newNode->next = breakpoints;
 		breakpoints = newNode;
-		return;
+		return 1;
 	}
 	else if(breakpoints->next == NULL){
+		//same address already exists
+		if(breakpoints->addr == addr)
+			return 0;
+			
 		breakpoints->next = newNode;
-		return;
+		return 1;
 	}
 	else{
 		temp = breakpoints;
-		while(temp->next->addr < addr){
+		while(temp->next->addr <= addr){
+			//same address already exists
+			if(temp->next->addr == addr)
+				return 0;
+			
 			if(temp->next->next == NULL){
 				temp->next->next = newNode;
-				return;
+				return 1;
 			}
 			temp = temp -> next;
 		}

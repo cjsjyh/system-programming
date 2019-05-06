@@ -121,13 +121,18 @@ int isDec(char* str){
 
 int isHex(char* str){
 	int len = (int)strlen(str);
+	for(int i=0;i<len;i++)
+		if(str[i] == '\n')
+			str[i] = '\0';
+	len = (int)strlen(str);
+
 	if(isDec(str) == TRUE)
 		return TRUE;
 
 	for(int i=0;i<len;i++)
-		if(!inRange((int)'a',(int)'f',str[i]) || !inRange((int)'A',(int)'F',str[i]))
-			return FALSE;
-	return TRUE;
+		if(inRange((int)'a',(int)'f',str[i]) || inRange((int)'A',(int)'F',str[i]))
+			return TRUE;
+	return FALSE;
 }
 
 int inRange(int min,int max,int value){
@@ -260,11 +265,6 @@ int bitToHex(int addr,int start,int end){
 			else if(i>=end){
 				if(memory[addr] & temp)
 					result += 1;
-				/*
-				while(i++ < 8*j -1){
-					result *= 2;
-				}
-				*/
 				return result;
 			}
 			else

@@ -21,8 +21,12 @@ int main()
 	newsymtable = TRUE;
 	progaddr = 0;
 	breakpoints = NULL;
-	for(int i=0;i<10;i++)
-		registers[i] = endaddr[i] = endaddr[10+i] = 0;
+	for(int i=0;i<10;i++){
+		registers[i] = 0;
+		for(int j=0;j<2;j++)
+			endaddr[i][j] = endaddr[10+i][j] = 0;
+	}
+		
 	endindex = 0;
 
 	optable = (hptr*)malloc(sizeof(hptr)*HASH_SIZE);
@@ -180,10 +184,17 @@ int main()
 			break;
 		}
 
-		else if (compareString(command,"progaddr",NULL) && argCount == 2 && cmaFlag){
-			progaddr = arg1;
-			printf("Progaddr set to %X\n",progaddr);
-			isPushed = FALSE;
+		else if (compareString(command,"progaddr",NULL) && argCount <= 2 && cmaFlag){
+			if (argCount == 1){
+				progaddr= 0;
+				printf("Program starting address set to 0x0\n");
+				isPushed = FALSE;
+			}
+			else{
+				progaddr = arg1;
+				printf("Program starting address set to 0x%X\n",progaddr);
+				isPushed = FALSE;
+			}
 		}
 
 		else if (compareString(command, "hi", "history") && argCount == 1) {
@@ -213,9 +224,12 @@ int main()
 					printf("[ok] clear all breakpoints\n");
 				}
 				//add a new BP
-				else if(argCount == 2 && isHex(bfr[1])){
-					bplist_push(arg1);
-					printf("[ok] create breakpoint %4X\n",arg1);
+				else if(argCount == 2){
+					if(bplist_push(arg1))
+						printf("[ok] create breakpoint %4X\n",arg1);
+					else
+						printf("bp set to same address! do nothing!\n");
+					
 				}
 				//invalid input
 				else
@@ -229,15 +243,27 @@ int main()
 		else if (compareString(command, "run", NULL) && bfrCount == 1){
 			int endflag = TRUE;
 
-			if(bpflag == FALSE)
+			if(endindex == 0){
+				printf("Program not loaded yet!\n\n");
+				continue;
+			}
+
+			//running for the first time
+			if(bpflag == FALSE){
 				registers[registerNum("PC")] = progaddr;
+				for(int k=0;k<endindex;k++)
+					if(endaddr[k][1] == progaddr)
+						registers[registerNum("L")] = endaddr[k][0];
+			}
 
 			while(endflag){
 				int pcreg = registers[registerNum("PC")];
+
+				//if bp is set
 				if(bplist_search(pcreg) && pcreg != lastbp){
 					bpflag = TRUE;
-					printReg();
 					lastbp = pcreg;
+					printReg();
 					printf("Stop at checkpoint[%4X]\n",lastbp);
 					break;
 				}//if
@@ -246,12 +272,13 @@ int main()
 				
 				//check for end of program
 				for(int k=0;k < endindex;k++){
-					if (registers[registerNum("PC")] >= endaddr[k]){
+					if (registers[registerNum("PC")] == endaddr[k][0]){
 						endflag = FALSE;
 						bpflag = FALSE;
 						lastbp = -1;
 						printReg();
 						printf("End Program\n");
+						break;
 					}
 				}//for
 			}//while

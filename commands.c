@@ -19,6 +19,7 @@ int cmd_loader(char **file, int fileCount){
 	char temp[200]={0,};
 	FILE *fp;
 	int pstartAddr=0,plength=0,totallength=0;
+	int isRefNum = FALSE;
 
 
 	//check if invalid file name is included
@@ -37,26 +38,35 @@ int cmd_loader(char **file, int fileCount){
 	plength = 0;
 
 	//PASS1 : build external symbol table
+	
 	for(int filenum=0;filenum < fileCount; filenum++){
 		fp = fopen(file[filenum],"r");
 		
 		while(fgets(line,sizeof(line),fp)){
+			//header record
 			if(line[0] == 'H'){
+				//get program name
 				extractStr(temp,line,1,6);
+				//program start address
 				pstartAddr += extractStrToHex(line,7,6) + plength;
+				//program length
 				plength = extractStrToHex(line,13,6);
+				//push into external symbol table
 				extsymtab_push(&head,temp,pstartAddr,plength);
 				totallength += plength;
+				//if header record of last file to load
 				if(filenum + 1 == fileCount){
-					endaddr[endindex++] = progaddr + totallength;
-					registers[registerNum("L")] = progaddr + totallength;
-				}
-					
+					endaddr[endindex][0] = progaddr + totallength;
+					endaddr[endindex++][1] = progaddr;
+				}		
 			}
+			//external definition record
 			else if(line[0] == 'D'){
 				int symvalue;
 				for(int i=0;;i++){
+					//symbol name
 					extractStr(temp,line,1+i*6*2,6);
+					//symbol address
 					symvalue = extractStrToHex(line,7+i*6*2,6);
 
 					//finished processing D record
@@ -67,6 +77,7 @@ int cmd_loader(char **file, int fileCount){
 						printf("Same Symbol %s Defined Twice!\n",temp);
 						return TRUE;
 					}
+					//add to external symbol table
 					else{
 						extsymtab_push(&head, temp, symvalue+pstartAddr, -1);
 					}
@@ -97,24 +108,31 @@ int cmd_loader(char **file, int fileCount){
 					memory[textAddr+j] = extractStrToHex(line,j*2+9,2);
 			}//T record
 			
+			//external reference record
 			else if(line[0] == 'R'){
-				for(int i=0;;i++){
-					//set external symbols to their reference number
-					int refIndex = extractStrToHex(line,1+8*i,2);
-					extractStr(temp, line, 3+8*i, 6);
-					searchResult = extsymtab_search(head,temp);
+				//if the program uses reference number
+				if(line[1]=='0' && line[2] =='2'){
+					isRefNum = TRUE;
+					for(int i=0;;i++){
+						//set external symbols to their reference number
+						int refIndex = extractStrToHex(line,1+8*i,2);
+						extractStr(temp, line, 3+8*i, 6);
+						searchResult = extsymtab_search(head,temp);
 
-					if(temp[0] == 0 || temp[0] == '\n')
-						break;
+						if(temp[0] == 0 || temp[0] == '\n')
+							break;
 
-					if (searchResult == NULL){
-						printf("Symbol %s referenced without Definition\n",temp);
-						return TRUE;
+						if (searchResult == NULL){
+							printf("Symbol %s referenced without Definition\n",temp);
+							return TRUE;
+						}
+						refNum[refIndex] = searchResult->addr;
+						
 					}
-					refNum[refIndex] = searchResult->addr;
 				}
 			}//R record
 			
+			//header record
 			else if(line[0] == 'H'){
 				//save prog name at the first index of reference Number
 				extractStr(temp,line,1,6);
@@ -124,21 +142,23 @@ int cmd_loader(char **file, int fileCount){
 				pstartAddr = searchResult -> addr;
 			}
 			
+			//modification record
 			else if(line[0] == 'M'){
 				int FixAddr = extractStrToHex(line,1,6) + pstartAddr;
 				int FixLen = extractStrToHex(line,7,2);
 				int FixRefIndex;
-				//relocatable program
 				
+				//relocatable program
 				if(strlen(line) < 12)
 					charArrHexCal(&(memory[FixAddr]),pstartAddr,FixLen,'+');
 				
 				//uses reference number
-				else if(strlen(line) < 14){
+				else if(isRefNum){
 					FixRefIndex = extractStrToHex(line,10,2);
 					charArrHexCal(&(memory[FixAddr]),refNum[FixRefIndex],FixLen,line[9]);
 				}
-				
+
+				//external reference without ref num
 				else{
 					extractStr(temp,line,10,6);
 					searchResult = extsymtab_search(head,temp);
@@ -157,12 +177,14 @@ int cmd_loader(char **file, int fileCount){
 		
 		
 	}//for
-
+	
 
 	extsymtab_printAll(head);
 	//print total length!!
 	printf("------------------------------------------------------\n");
 	printf("\t\t\t\ttotal length\t%04X\n",totallength);
+
+	return FALSE;
 }
 
 void cmd_type(char* filename){
@@ -952,7 +974,6 @@ void run_opcodes(int addr){
 	int mode, format, relative, value;
 	unsigned int disp;
 	int opcode;
-	int memoryValue = -1;
 	
 	opcode = bitToHex(addr,0,7);
 	opcode -= bitToHex(addr,4,7) % 4;
